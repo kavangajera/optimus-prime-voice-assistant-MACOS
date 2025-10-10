@@ -18,50 +18,75 @@ def start_microphone():
     microphone_active.set()
     print("🟢 Microphone started")
 
+# Global recognizer instance for better performance
+_recognizer = None
+_microphone = None
+
+def get_recognizer():
+    """Get or create recognizer instance for better performance"""
+    global _recognizer, _microphone
+    if _recognizer is None:
+        _recognizer = sr.Recognizer()
+        _recognizer.dynamic_energy_threshold = True
+        _recognizer.energy_threshold = 2500  # Lower threshold for better music compatibility
+        _recognizer.pause_threshold = 0.5  # Faster response
+        _recognizer.operation_timeout = 2  # Shorter timeout for better performance
+        _recognizer.phrase_threshold = 0.3  # Lower phrase threshold for music environments
+        
+        # Create microphone instance once
+        _microphone = sr.Microphone()
+        # Adjust for ambient noise once at startup
+        with _microphone as source:
+            _recognizer.adjust_for_ambient_noise(source, duration=0.1)
+    
+    return _recognizer, _microphone
+
 def listen_for_command():
     """
-    Listens for a voice command and returns the recognized text.
-    Returns None if no speech is detected or an error occurs.
+    Optimized voice command listener with better performance and music compatibility
     """
     # Check if microphone is currently active
     if not microphone_active.is_set():
-        time.sleep(0.1)  # Brief pause to allow other operations to complete
+        time.sleep(0.05)  # Reduced pause for better responsiveness
         return None
     
-    recognizer = sr.Recognizer()
-    recognizer.dynamic_energy_threshold = True
-    recognizer.energy_threshold = 4000  # Adjust based on environment
-    recognizer.pause_threshold = 0.8  # Seconds of non-speaking audio before a phrase is considered complete
+    recognizer, microphone = get_recognizer()
     
-    # Create microphone instance with specific parameters to reduce conflicts
-    with sr.Microphone() as source:
-        print("🎙️ Listening for command...")
-        # Minimal ambient noise adjustment for faster startup
-        recognizer.adjust_for_ambient_noise(source, duration=0.3)
-        
-        try:
-            # Listen for audio with no timeout to wait indefinitely for speech
-            # Using phrase_time_limit to control maximum phrase length
-            audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
-            print("🔄 Processing audio...")
+    try:
+        # Listen for audio with optimized settings for music environments
+        with microphone as source:
+            # Quick ambient noise adjustment - shorter for music compatibility
+            recognizer.adjust_for_ambient_noise(source, duration=0.05)
             
-            # Recognize speech using Google Speech Recognition
-            text = recognizer.recognize_google(audio)
+            # Listen with optimized settings for music environments
+            audio = recognizer.listen(
+                source, 
+                timeout=2,  # Shorter timeout for better responsiveness
+                phrase_time_limit=3  # Shorter phrase limit for music environments
+            )
+            
+            # Recognize speech using Google Speech Recognition with music-friendly settings
+            text = recognizer.recognize_google(
+                audio, 
+                language="en-US",
+                show_all=False  # Don't show all alternatives for better performance
+            )
+            
             print(f"✅ Recognized: {text}")
             return text.lower()
             
-        except sr.WaitTimeoutError:
-            print("⏰ No speech detected within timeout period")
-            return None
-        except sr.UnknownValueError:
-            print("❌ Could not understand audio")
-            return None
-        except sr.RequestError as e:
-            print(f"❌ Could not request results from Google Speech Recognition service; {e}")
-            return None
-        except Exception as e:
-            print(f"❌ An error occurred: {e}")
-            return None
+    except sr.WaitTimeoutError:
+        # Don't print timeout messages to reduce noise
+        return None
+    except sr.UnknownValueError:
+        # Don't print unknown value errors to reduce noise
+        return None
+    except sr.RequestError as e:
+        print(f"❌ Speech recognition service error: {e}")
+        return None
+    except Exception as e:
+        print(f"❌ Speech recognition error: {e}")
+        return None
 
 def main():
     """Test function for speech recognition"""

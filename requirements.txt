@@ -3,3 +3,4 @@ torch
 SpeechRecognition
 pyaudio
 pyautogui
+psutil

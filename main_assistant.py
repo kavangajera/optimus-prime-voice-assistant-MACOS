@@ -5,107 +5,274 @@ import sys
 import re
 import subprocess
 import threading
+import queue
+import concurrent.futures
+from multiprocessing import Process, Queue
+import psutil
 
 # Import our custom modules
 from app_launcher import open_app, close_app, play_music, send_whatsapp_message
 from speech_to_text import listen_for_command, stop_microphone, start_microphone
 # Import text to speech functions
-from TTS.api import TTS
+from text_to_speech import get_tts_instance, generate_speech_clean
 # Import Electron controller
 from electron_controller import ElectronController
 
-# Global variable to track audio state
+# Global variables for performance optimization
 is_audio_playing = threading.Event()
+tts_queue = queue.Queue()
+audio_queue = queue.Queue()
+tts_executor = None
+audio_executor = None
 
-def speak_text(text, electron_controller=None):
+
+def wait_for_file_write_complete(file_path, timeout=15):
     """
-    Convert text to speech using the Optimus Prime voice
+    Wait for a file to be completely written by checking its size over time.
+    This is crucial for preventing issues where audio is cut off because playback starts before writing is complete.
+    Extended timeout and more thorough checks to ensure complete file writing.
+    """
+    import time
+    import os
+    start_time = time.time()
+    
+    # Wait until the file exists
+    while not os.path.exists(file_path):
+        if time.time() - start_time > timeout:
+            return False
+        time.sleep(0.05)
+    
+    # Monitor the file size to ensure writing is complete
+    # Use multiple checks to ensure file is really done being written
+    size_checks = []
+    stable_count = 0
+    required_stable_checks = 5  # Require 5 consistent readings
+    
+    while True:
+        try:
+            current_size = os.path.getsize(file_path)
+            size_checks.append(current_size)
+            
+            # Keep last several size checks
+            if len(size_checks) > required_stable_checks:
+                size_checks = size_checks[-required_stable_checks:]
+            
+            # Check if all recent size readings are the same
+            if len(size_checks) >= required_stable_checks and len(set(size_checks)) == 1:
+                stable_count += 1
+                if stable_count >= 2:  # Require stability for 2 consecutive checks
+                    # Additional delay to ensure file handle is completely released
+                    time.sleep(0.2)
+                    return True
+            else:
+                stable_count = 0  # Reset if size changes
+            
+            time.sleep(0.1)
+            
+            if time.time() - start_time > timeout:
+                # Timeout reached but file exists, return True to try to play it
+                time.sleep(0.1)  # Small additional delay
+                return True
+        except OSError:
+            time.sleep(0.05)
+            continue
+
+
+def play_audio_file(audio_path, speed=1.0, quality=1, volume=None):
+    """
+    Centralized function to play audio files using afplay with enhanced settings to prevent word skipping
+    """
+    import time
+    
+    # Check if the audio file exists and is completely written
+    if not wait_for_file_write_complete(audio_path):
+        print(f"❌ Audio file not ready for playback: {audio_path}")
+        return False
+    
+    # Additional safety: try to open and briefly read the file to ensure it's accessible
+    try:
+        with open(audio_path, 'rb') as f:
+            # Read first 100 bytes to ensure file is readable and not locked
+            f.read(100)
+        # Small delay to allow any file handles to be properly released
+        time.sleep(0.2)
+    except Exception as e:
+        print(f"❌ Cannot access audio file: {e}")
+        return False
+    
+    try:
+        # Build afplay command with enhanced quality settings
+        cmd = ["afplay"]
+        
+        # Add quality setting - higher value for better quality (1 is high quality)
+        cmd.extend(["-q", str(quality)])
+        
+        # Add speed setting if different from normal (1.0 is normal)
+        if speed != 1.0:
+            cmd.extend(["-r", str(speed)])
+        
+        # Add volume setting if specified (0.0 to 1.0, where 1.0 is maximum)
+        if volume is not None:
+            cmd.extend(["-v", str(volume)])
+        
+        # Add the audio file path
+        cmd.append(audio_path)
+        
+        # Use the afplay command with optimized settings
+        # Using a generous timeout to ensure complete playback
+        result = subprocess.run(cmd, check=True, timeout=90, capture_output=True)
+        
+        # Ensure the subprocess completes properly
+        if result.returncode == 0:
+            # Additional delay after playback to ensure complete processing
+            time.sleep(0.3)
+            return True
+        else:
+            print(f"❌ afplay returned non-zero: {result.returncode}")
+            if result.stderr:
+                print(f"   stderr: {result.stderr.decode()}")
+            return False
+            
+    except subprocess.TimeoutExpired:
+        print("⏰ Audio playback timeout")
+        return False
+    except Exception as e:
+        print(f"❌ Audio playback failed: {e}")
+        if 'result' in locals() and hasattr(result, 'stderr') and result.stderr:
+            stderr_output = result.stderr.decode().strip()
+            if stderr_output:
+                print(f"   afplay stderr: {stderr_output}")
+        return False
+
+# Removed preprocess_text_for_tts function - using direct TTS calls for better performance
+
+def speak_text_clean(text, electron_controller=None):
+    """
+    Direct TTS function - exactly like text_to_speech.py
+    No layers, no extra processing, direct TTS call
     """
     try:
         # Play animation when speaking starts
         if electron_controller:
             electron_controller.play_animation()
         
-        # Initialize TTS with YourTTS model (reuse instance for better performance)
-        if not hasattr(speak_text, 'tts'):
-            model_name = "tts_models/multilingual/multi-dataset/your_tts"
-            speak_text.tts = TTS(model_name=model_name, progress_bar=False, gpu=False)
-        
-        # Generate speech with Optimus Prime voice
+        # Check if reference audio exists
         speaker_wav = "optimus-clear_nZx1aJFy.wav"
         output_path = "response.wav"
         
-        # Check if reference audio exists
         if not os.path.exists(speaker_wav):
             print(f"❌ Audio file '{speaker_wav}' not found!")
-            # Pause animation if speech generation fails
             if electron_controller:
                 electron_controller.pause_animation()
             return False
-            
-        # Preprocess text to handle common issues that cause word skipping
-        # Replace common abbreviations and problematic punctuation
-        processed_text = text.replace("...", " dot dot dot ")
-        processed_text = processed_text.replace("Mr.", "Mister ")
-        processed_text = processed_text.replace("Mrs.", "Missus ")
-        processed_text = processed_text.replace("Dr.", "Doctor ")
-        processed_text = processed_text.replace("Prof.", "Professor ")
-        processed_text = processed_text.replace("St.", "Saint ")
-        processed_text = processed_text.replace("Ave.", "Avenue ")
-        processed_text = processed_text.replace("Rd.", "Road ")
-        processed_text = processed_text.replace("Ln.", "Lane ")
-        processed_text = processed_text.replace("etc.", "et cetera ")
-        processed_text = processed_text.replace("vs.", "versus ")
-        processed_text = processed_text.replace("i.e.", "that is ")
-        processed_text = processed_text.replace("e.g.", "for example ")
-        processed_text = processed_text.replace("cf.", "compare ")
-        processed_text = processed_text.replace("al.", "and others ")
         
-        # Remove extra whitespace and ensure clean text
-        import re
-        processed_text = re.sub(r'\s+', ' ', processed_text).strip()
+        print(f"🗣️ Speaking: {text}")
         
-        # Generate the speech
-        speak_text.tts.tts_to_file(
-            text=processed_text,
+        # DIRECT TTS CALL - exactly like text_to_speech.py
+        tts = get_tts_instance()
+        tts.tts_to_file(
+            text=text,
             speaker_wav=speaker_wav,
             language="en",
             file_path=output_path
         )
         
-        # Wait briefly to ensure file is written before playing
-        time.sleep(0.1)
+        # Additional wait for file to be completely written by the TTS process
+        # The TTS process may still be writing even after the function returns
+        time.sleep(0.5)  # Wait for TTS process to finish writing
+        
+        # Direct audio playback - no extra layers
+        play_audio_file(output_path, speed=1.0, quality=1)
+        
+        time.sleep(0.5)  # Brief pause to ensure audio finishes
+        # Pause animation when speaking ends
+        if electron_controller:
+            threading.Timer(0.2, electron_controller.pause_animation).start()
+            
+        return True
+        
+    except Exception as e:
+        print(f"❌ Direct TTS failed: {e}")
+        if electron_controller:
+            electron_controller.pause_animation()
+        return False
+
+def generate_speech_async(text, output_path, speaker_wav):
+    """Generate speech using the clean method from text_to_speech.py"""
+    try:
+        print(f"🗣️ Generating speech for: {text[:50]}...")
+        
+        # Use the clean TTS generation from text_to_speech.py
+        success = generate_speech_clean(text, output_path, speaker_wav)
+        
+        if success:
+            print(f"✅ Speech generated successfully: {output_path}")
+            return True
+        else:
+            print(f"❌ Speech generation failed")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Speech generation failed: {e}")
+        return False
+
+def play_audio_async(audio_path):
+    """Play audio in a separate thread to avoid blocking"""
+    return play_audio_file(audio_path, speed=1.0, quality=1)
+
+def speak_text(text, electron_controller=None):
+    """
+    Clean and fast text-to-speech like text_to_speech.py
+    """
+    try:
+        # Play animation when speaking starts
+        if electron_controller:
+            electron_controller.play_animation()
+        
+        # Check if reference audio exists
+        speaker_wav = "optimus-clear_nZx1aJFy.wav"
+        output_path = "response.wav"
+        
+        if not os.path.exists(speaker_wav):
+            print(f"❌ Audio file '{speaker_wav}' not found!")
+            if electron_controller:
+                electron_controller.pause_animation()
+            return False
         
         # Set audio playing flag to temporarily stop microphone
         is_audio_playing.set()
-        # Stop microphone explicitly to prevent conflicts
         stop_microphone()
         
         try:
-            # Play the generated audio (using subprocess for non-blocking playback)
-            # Using a simple afplay command to reduce audio conflicts
-            subprocess.call(["afplay", output_path])
+            # Generate speech directly - no thread pool overhead
+            if generate_speech_async(text, output_path, speaker_wav):
+                # Additional wait for file to be completely written by the TTS process
+                time.sleep(0.5)  # Wait for TTS process to finish writing
+                
+                # Play audio directly - no thread pool
+                play_audio_file(output_path, speed=1.0, quality=1)
+            else:
+                print("❌ Speech generation failed")
+                return False
+                    
         finally:
             # Always clear the audio playing flag after playback
             is_audio_playing.clear()
-            # Resume microphone after a brief delay to avoid conflicts
-            threading.Timer(0.5, start_microphone).start()
+            # Resume microphone after a brief delay
+            threading.Timer(0.2, start_microphone).start()
         
-        # Pause animation when speaking ends (after a short delay to allow playback to start)
+        # Pause animation when speaking ends
         if electron_controller:
-            threading.Timer(0.5, electron_controller.pause_animation).start()
+            threading.Timer(0.2, electron_controller.pause_animation).start()
             
         return True
         
     except Exception as e:
         print(f"❌ Text-to-speech failed: {e}")
-        # Pause animation if speech generation fails
+        is_audio_playing.clear()
+        start_microphone()
         if electron_controller:
             electron_controller.pause_animation()
-        # Clear the audio playing flag in case of error
-        is_audio_playing.clear()
-        # Ensure microphone is started again even if there's an error
-        start_microphone()
         return False
 
 def extract_music_command(command):
@@ -187,7 +354,7 @@ def process_command(command, electron_controller=None):
     if "transform optimus" in command.lower():
         response = "Rollouting Sir! Good bye..."
         print(f"🤖 {response}")
-        speak_text(response, electron_controller)
+        speak_text_clean(response, electron_controller)
         return False  # Stop listening
     
     # Check for music commands
@@ -195,16 +362,72 @@ def process_command(command, electron_controller=None):
     if song_name:
         response = f"Playing {song_name} for you sir!"
         print(f"🤖 {response}")
-        speak_text(response, electron_controller)
-        # Set audio playing flag to temporarily stop microphone during music playback
-        is_audio_playing.set()
-        # Stop microphone explicitly to prevent conflicts
-        stop_microphone()
-        try:
-            play_music(song_name)
-        finally:
-            # Wait a bit before resuming microphone to avoid immediate conflicts
-            threading.Timer(2.0, lambda: _resume_microphone()).start()
+        
+        # Start music playback with proper TTS and timing
+        def play_music_with_tts():
+            try:
+                # Step 1: Play TTS response without microphone interference
+                print(f"🗣️ Speaking: {response}")
+                
+                # Generate and play TTS without microphone management
+                speaker_wav = "optimus-clear_nZx1aJFy.wav"
+                output_path = "response.wav"
+                
+                if os.path.exists(speaker_wav):
+                    # DIRECT TTS CALL - exactly like text_to_speech.py
+                    tts = get_tts_instance()
+                    tts.tts_to_file(
+                        text=response,
+                        speaker_wav=speaker_wav,
+                        language="en",
+                        file_path=output_path
+                    )
+                    
+                    # Additional wait for file to be completely written by the TTS process
+                    time.sleep(0.5)  # Wait for TTS process to finish writing
+                    
+                    # Direct audio playback
+                    play_audio_file(output_path, speed=0.9, quality=1)
+                
+                # Step 2: Wait 1 second after TTS completes
+                print("⏳ Waiting 1 second before starting music...")
+                time.sleep(1.0)
+                
+                # Step 3: Start music playback and check if song exists
+                print(f"🎵 Starting music playback for: {song_name}")
+                music_success = play_music(song_name)
+                
+                if music_success:
+                    print(f"🎵 Music playback initiated for: {song_name}")
+                else:
+                    # Song not found - play error message
+                    error_response = f"There is no song with name {song_name} in your Music library, sir"
+                    print(f"🤖 {error_response}")
+                    
+                    # DIRECT TTS CALL for error message
+                    if os.path.exists(speaker_wav):
+                        tts = get_tts_instance()
+                        tts.tts_to_file(
+                            text=error_response,
+                            speaker_wav=speaker_wav,
+                            language="en",
+                            file_path=output_path
+                        )
+                        
+                        # Additional wait for file to be completely written by the TTS process
+                        time.sleep(0.5)  # Wait for TTS process to finish writing
+                        
+                        # Direct audio playback
+                        play_audio_file(output_path, speed=1.0, quality=1)
+                
+            except Exception as e:
+                print(f"❌ Music playback error: {e}")
+        
+        # Start music with TTS in independent thread
+        # No microphone control during this process
+        music_thread = threading.Thread(target=play_music_with_tts, daemon=True)
+        music_thread.start()
+        
         return True
     
     # Check for WhatsApp message commands
@@ -219,7 +442,7 @@ def process_command(command, electron_controller=None):
         
         response = f"Sending message to {contact_name} for you sir!"
         print(f"🤖 {response}")
-        speak_text(response, electron_controller)
+        speak_text_clean(response, electron_controller)
         send_whatsapp_message(contact_name, message)
         return True
     
@@ -232,29 +455,70 @@ def process_command(command, electron_controller=None):
         if action == "open":
             response = f"Opening {app_name} for you sir!"
             print(f"🤖 {response}")
-            speak_text(response, electron_controller)
+            speak_text_clean(response, electron_controller)
             open_app(app_name)
         elif action == "close":
             response = f"Closing {app_name} for you sir!"
             print(f"🤖 {response}")
-            speak_text(response, electron_controller)
+            speak_text_clean(response, electron_controller)
             close_app(app_name)
     else:
-        response = "I didn't understand that command sir. Please try again."
-        print(f"🤖 {response}")
-        speak_text(response, electron_controller)
+        response = "I didn't get the command sir. Please try to say it again."
+        # print(f"🤖 {response}")
+        speak_text_clean(response, electron_controller)
     
     return True  # Continue listening
 
-def _resume_microphone():
-    """Internal function to resume microphone after a delay"""
-    is_audio_playing.clear()
-    start_microphone()
+
+def optimize_system_performance():
+    """Optimize system performance for M3 Pro MacBook"""
+    try:
+        # Set process priority to high for better performance
+        import os
+        os.nice(-10)  # Higher priority
+        
+        # Optimize for M3 Pro architecture
+        # Set environment variables for better performance
+        os.environ['PYTHONUNBUFFERED'] = '1'
+        os.environ['OMP_NUM_THREADS'] = '8'  # M3 Pro has 8 performance cores
+        os.environ['MKL_NUM_THREADS'] = '8'
+        
+        # Configure psutil for better resource monitoring
+        psutil.cpu_percent(interval=None)  # Initialize CPU monitoring
+        
+        print("🚀 System optimized for M3 Pro MacBook")
+        print(f"💻 CPU Cores: {psutil.cpu_count()}")
+        print(f"🧠 Memory: {psutil.virtual_memory().total // (1024**3)} GB")
+        
+    except Exception as e:
+        print(f"⚠️ System optimization warning: {e}")
+
+def monitor_system_resources():
+    """Monitor system resources and adjust performance accordingly"""
+    try:
+        # Get current CPU and memory usage
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        memory_percent = psutil.virtual_memory().percent
+        
+        # Adjust performance based on system load
+        if cpu_percent > 80 or memory_percent > 85:
+            print(f"⚠️ High system load - CPU: {cpu_percent}%, Memory: {memory_percent}%")
+            return False  # Reduce processing
+        elif cpu_percent > 60 or memory_percent > 70:
+            print(f"📊 Moderate system load - CPU: {cpu_percent}%, Memory: {memory_percent}%")
+            return True   # Normal processing
+        else:
+            return True   # Full performance
+    except:
+        return True  # Default to full performance if monitoring fails
 
 def main():
     """
-    Main voice assistant loop
+    Main voice assistant loop with optimized performance
     """
+    # Optimize system performance first
+    optimize_system_performance()
+    
     # Initialize Electron controller
     electron_controller = ElectronController()
     
@@ -279,25 +543,40 @@ def main():
     # Welcome message (make it shorter for quicker startup)
     welcome_msg = "Hello sir, I am Optimus Prime. How can I assist you?"
     print(f"🤖 {welcome_msg}")
-    speak_text(welcome_msg, electron_controller)
+    speak_text_clean(welcome_msg, electron_controller)
     
     # Track time since last user interaction
     last_interaction_time = time.time()
     inactivity_timeout = 2  # Reduced timeout for quicker animation pause
+    resource_check_counter = 0
     
-    # Main listening loop
+    # Main listening loop with improved performance
     while True:
-        # Add a small delay to reduce CPU usage and potentially reduce audio conflicts
-        time.sleep(0.1)
+        # Monitor system resources periodically
+        resource_check_counter += 1
+        if resource_check_counter % 20 == 0:  # Check every 20 iterations
+            system_ok = monitor_system_resources()
+            if not system_ok:
+                time.sleep(0.2)  # Longer delay if system is under load
+            else:
+                time.sleep(0.05)  # Normal delay
+        else:
+            time.sleep(0.05)
         
-        # Skip listening if audio is currently playing to avoid conflicts
+        # Only skip listening during TTS generation, not during music playback
         if is_audio_playing.is_set():
-            # Still process any pending commands but don't listen for new ones
-            if not process_command(None, electron_controller):
-                break
-            continue
-        
-        command = listen_for_command()
+            # This is only set during TTS, not during music
+            # So we can still listen normally
+            command = None
+            try:
+                # Try to listen with shorter timeout during TTS
+                command = listen_for_command()
+            except:
+                pass
+        else:
+            # Normal listening when no TTS is playing
+            # Music plays independently and doesn't affect this
+            command = listen_for_command()
         
         # Check for inactivity timeout
         current_time = time.time()
