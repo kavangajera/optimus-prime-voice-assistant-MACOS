@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      margin: 0;
+      background: transparent;
+      overflow: hidden;
+      border-radius: 20px; /* Rounded corners like Siri */
+      backdrop-filter: blur(10px); /* Blur effect like Siri */
+      -webkit-backdrop-filter: blur(10px); /* Safari support */
+      background-color: rgba(0, 0, 0, 0.3); /* Semi-transparent background */
+    }
+    #optimus {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      width: 330px;
+      height: 330px;
+      border: none;
+      border-radius: 20px; /* Match body's rounded corners */
+    }
+    
+    /* Add a subtle glow effect */
+    .glow {
+      position: absolute;
+      top: -5px;
+      left: -5px;
+      right: -5px;
+      bottom: -5px;
+      border-radius: 25px;
+      background: radial-gradient(circle, rgba(255,165,0,0.4) 0%, rgba(255,165,0,0) 70%);
+      z-index: -1;
+      opacity: 0.7;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 0.5; }
+      50% { opacity: 0.8; }
+      100% { opacity: 0.5; }
+    }
+  </style>
+</head>
+<body>
+  <div class="glow"></div>
+  <iframe
+    id="optimus"
+    title="Optimus Prime"
+    src="https://sketchfab.com/models/b30bfdc457bb4a658c2f96bbd4bdd850/embed?autostart=1&ui_controls=0&ui_hint=0&ui_stop=0&ui_settings=0&ui_inspector=0&transparent=1&ui_theme=dark"
+    allow="autoplay; fullscreen; xr-spatial-tracking"
+    frameborder="0">
+  </iframe>
+  
+  <script>
+    // Listen for messages from parent window (Electron main process)
+    window.addEventListener('message', function(event) {
+      // Verify the message is from the same origin
+      if (event.origin !== window.location.origin && event.origin !== 'https://sketchfab.com') {
+        // For Sketchfab, we'll just forward the message
+      }
+      
+      // Handle play/pause commands
+      if (event.data && event.data.action) {
+        const iframe = document.getElementById('optimus');
+        switch(event.data.action) {
+          case 'play':
+            // Send play command to Sketchfab iframe
+            iframe.contentWindow.postMessage({
+              type: 'play'
+            }, 'https://sketchfab.com');
+            break;
+          case 'pause':
+            // Send pause command to Sketchfab iframe
+            iframe.contentWindow.postMessage({
+              type: 'pause'
+            }, 'https://sketchfab.com');
+            break;
+        }
+      }
+    });
+  </script>
+</body>
+</html>

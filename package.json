@@ -1,0 +1,9 @@
+{
+  "devDependencies": {
+    "electron": "^37.3.1"
+  },
+  "dependencies": {
+    "@electron/remote": "^2.1.2",
+    "electron-ipc": "^0.3.0"
+  }
+}
