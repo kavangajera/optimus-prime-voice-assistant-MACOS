@@ -1,7 +1,6 @@
 import subprocess
 import sys
 import time
-import threading
 
 def is_app_running(app_name):
     """Check if an application is currently running"""

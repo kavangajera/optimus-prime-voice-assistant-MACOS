@@ -1,6 +1,5 @@
 from deep_translator import GoogleTranslator
 import speech_recognition as sr
-import pyaudio
 
 def translate_to_english(text):
     try:

@@ -1,10 +1,6 @@
 import time
-import threading
-
 # Import our custom modules
-from app_launcher import open_app, close_app, play_music, send_whatsapp_message
-from speech_to_text import listen_for_command, microphone_active
-from text_to_speech import get_tts_instance
+from speech_to_text import listen_for_command
 # Import our new modules
 from audio_handler import AudioHandler
 from tts_handler import TTSHandler

@@ -1,8 +1,6 @@
 """
 Audio handling module for the Optimus Prime Voice Assistant
 """
-import time
-import os
 import subprocess
 import threading
 
