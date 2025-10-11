@@ -1,18 +1,14 @@
-import speech_recognition as sr
 import time
 import os
-import sys
 import re
 import subprocess
 import threading
 import queue
-import concurrent.futures
-from multiprocessing import Process, Queue
 import psutil
 
 # Import our custom modules
 from app_launcher import open_app, close_app, play_music, send_whatsapp_message
-from speech_to_text import listen_for_command, stop_microphone, start_microphone
+from speech_to_text import listen_for_command
 # Import text to speech functions
 from text_to_speech import get_tts_instance, generate_speech_clean
 # Import Electron controller
@@ -20,6 +16,7 @@ from electron_controller import ElectronController
 
 # Global variables for performance optimization
 is_audio_playing = threading.Event()
+is_music_playing = threading.Event()  # New event to track music playback
 tts_queue = queue.Queue()
 audio_queue = queue.Queue()
 tts_executor = None
@@ -239,9 +236,8 @@ def speak_text(text, electron_controller=None):
                 electron_controller.pause_animation()
             return False
         
-        # Set audio playing flag to temporarily stop microphone
+        # Set audio playing flag to indicate TTS is happening
         is_audio_playing.set()
-        stop_microphone()
         
         try:
             # Generate speech directly - no thread pool overhead
@@ -258,8 +254,6 @@ def speak_text(text, electron_controller=None):
         finally:
             # Always clear the audio playing flag after playback
             is_audio_playing.clear()
-            # Resume microphone after a brief delay
-            threading.Timer(0.2, start_microphone).start()
         
         # Pause animation when speaking ends
         if electron_controller:
@@ -270,7 +264,6 @@ def speak_text(text, electron_controller=None):
     except Exception as e:
         print(f"❌ Text-to-speech failed: {e}")
         is_audio_playing.clear()
-        start_microphone()
         if electron_controller:
             electron_controller.pause_animation()
         return False
@@ -365,6 +358,10 @@ def process_command(command, electron_controller=None):
         
         # Start music playback with proper TTS and timing
         def play_music_with_tts():
+            # Set the music playing flag to prevent microphone from starting/stopping
+            is_music_playing.set()
+            # Stop microphone completely during music playback
+           
             try:
                 # Step 1: Play TTS response without microphone interference
                 print(f"🗣️ Speaking: {response}")
@@ -420,8 +417,16 @@ def process_command(command, electron_controller=None):
                         # Direct audio playback
                         play_audio_file(output_path, speed=1.0, quality=1)
                 
+            # Direct audio playback
+                play_audio_file(output_path, speed=1.0, quality=1)
+        
             except Exception as e:
                 print(f"❌ Music playback error: {e}")
+            finally:
+                # Always clear the music playing flag when music playback is done
+                is_music_playing.clear()
+                # Resume microphone after music playback
+             
         
         # Start music with TTS in independent thread
         # No microphone control during this process
@@ -563,19 +568,25 @@ def main():
         else:
             time.sleep(0.05)
         
-        # Only skip listening during TTS generation, not during music playback
+        # Handle listening based on current state (TTS vs music vs normal)
         if is_audio_playing.is_set():
-            # This is only set during TTS, not during music
-            # So we can still listen normally
+            # During TTS playback, microphone is managed by the TTS functions
+            # We still attempt to listen but with caution
             command = None
             try:
                 # Try to listen with shorter timeout during TTS
                 command = listen_for_command()
             except:
                 pass
+        elif is_music_playing.is_set():
+            # During music playback, completely stop listening to prevent volume fluctuations
+            # Music should play without any microphone interference
+            command = None
+            # Skip listening entirely during music playback
+            # Check if user wants to stop music (this will be handled by system events)
+            time.sleep(0.2)  # Longer pause to reduce CPU usage during music
         else:
-            # Normal listening when no TTS is playing
-            # Music plays independently and doesn't affect this
+            # Normal listening when neither TTS nor music is playing
             command = listen_for_command()
         
         # Check for inactivity timeout

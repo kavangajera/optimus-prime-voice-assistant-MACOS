@@ -1,8 +1,6 @@
 import subprocess
 import sys
-import pyautogui
 import time
-import threading
 
 def open_app(app_name):
     """Open an application on macOS"""
