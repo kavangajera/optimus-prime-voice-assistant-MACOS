@@ -7,8 +7,8 @@ import queue
 import psutil
 
 # Import our custom modules
-from app_launcher import open_app, close_app, play_music, send_whatsapp_message
-from speech_to_text import listen_for_command
+from app_launcher import open_app, close_app, play_music, send_whatsapp_message, monitor_music_playback
+from speech_to_text import listen_for_command, microphone_active
 # Import text to speech functions
 from text_to_speech import get_tts_instance, generate_speech_clean
 # Import Electron controller
@@ -361,7 +361,8 @@ def process_command(command, electron_controller=None):
             # Set the music playing flag to prevent microphone from starting/stopping
             is_music_playing.set()
             # Stop microphone completely during music playback
-           
+            microphone_active.clear()
+            
             try:
                 # Step 1: Play TTS response without microphone interference
                 print(f"🗣️ Speaking: {response}")
@@ -396,6 +397,10 @@ def process_command(command, electron_controller=None):
                 
                 if music_success:
                     print(f"🎵 Music playback initiated for: {song_name}")
+                    print("⏳ Music is playing, microphone is off...")
+                    # Monitor actual music playback to detect when it finishes
+                    from app_launcher import monitor_music_playback
+                    monitor_music_playback()
                 else:
                     # Song not found - play error message
                     error_response = f"There is no song with name {song_name} in your Music library, sir"
@@ -416,9 +421,6 @@ def process_command(command, electron_controller=None):
                         
                         # Direct audio playback
                         play_audio_file(output_path, speed=1.0, quality=1)
-                
-            # Direct audio playback
-                play_audio_file(output_path, speed=1.0, quality=1)
         
             except Exception as e:
                 print(f"❌ Music playback error: {e}")
@@ -426,6 +428,7 @@ def process_command(command, electron_controller=None):
                 # Always clear the music playing flag when music playback is done
                 is_music_playing.clear()
                 # Resume microphone after music playback
+                microphone_active.set()
              
         
         # Start music with TTS in independent thread

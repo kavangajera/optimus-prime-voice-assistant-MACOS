@@ -1,6 +1,91 @@
 import subprocess
 import sys
 import time
+import threading
+
+def is_app_running(app_name):
+    """Check if an application is currently running"""
+    try:
+        # Use 'osascript' to check if app is running with the correct AppleScript
+        script = f'tell application \"System Events\" to (name of every process) contains \"{app_name}\"'
+        result = subprocess.run(['osascript', '-e', script], 
+                              capture_output=True, text=True, check=True)
+        # If the output contains "true", the app is running
+        return result.stdout.strip() == "true"
+    except subprocess.CalledProcessError:
+        return False
+    except Exception:
+        return False
+
+
+def is_music_playing():
+    """Check if music is currently playing in the Music app"""
+    try:
+        script = '''
+        tell application "Music"
+            if player state is playing then
+                return "playing"
+            else
+                return "stopped"
+            end if
+        end tell
+        '''
+        
+        result = subprocess.run(['osascript', '-e', script], 
+                              capture_output=True, text=True, check=True)
+        
+        return result.stdout.strip() == "playing"
+    except:
+        return False
+
+
+def get_current_track_duration():
+    """Get the duration of the current track in seconds"""
+    try:
+        script = '''
+        tell application "Music"
+            if player state is playing then
+                return duration of current track
+            else
+                return 0
+            end if
+        end tell
+        '''
+        
+        result = subprocess.run(['osascript', '-e', script], 
+                              capture_output=True, text=True, check=True)
+        
+        duration = result.stdout.strip()
+        if duration and duration.isdigit():
+            return int(duration)
+        return 0
+    except:
+        return 0
+
+
+def get_current_track_position():
+    """Get the current playback position in seconds"""
+    try:
+        script = '''
+        tell application "Music"
+            if player state is playing then
+                return player position
+            else
+                return 0
+            end if
+        end tell
+        '''
+        
+        result = subprocess.run(['osascript', '-e', script], 
+                              capture_output=True, text=True, check=True)
+        
+        position = result.stdout.strip()
+        if position and position.replace('.', '').isdigit():
+            return float(position)
+        return 0
+    except:
+        return 0
+
 
 def open_app(app_name):
     """Open an application on macOS"""
@@ -16,6 +101,7 @@ def open_app(app_name):
         print("❌ 'open' command not found. This script is designed for macOS.")
         return False
 
+
 def close_app(app_name):
     """Close an application on macOS"""
     try:
@@ -30,6 +116,7 @@ def close_app(app_name):
     except FileNotFoundError:
         print("❌ 'osascript' command not found. This script is designed for macOS.")
         return False
+
 
 def send_whatsapp_message(contact_name, message):
     """Send a message to a WhatsApp contact"""
@@ -103,6 +190,7 @@ def send_whatsapp_message(contact_name, message):
         print(f"❌ Error sending message: {e}")
         return False
 
+
 def play_music(song_name):
     """Play a specific song in Music app using AppleScript with optimized settings"""
     try:
@@ -150,19 +238,23 @@ def play_music(song_name):
         print(f"❌ Unexpected error playing music: {e}")
         return False
 
-def is_app_running(app_name):
-    """Check if an application is currently running"""
-    try:
-        # Use 'osascript' to check if app is running with the correct AppleScript
-        script = f'tell application "System Events" to (name of every process) contains "{app_name}"'
-        result = subprocess.run(['osascript', '-e', script], 
-                              capture_output=True, text=True, check=True)
-        # If the output contains "true", the app is running
-        return result.stdout.strip() == "true"
-    except subprocess.CalledProcessError:
-        return False
-    except Exception:
-        return False
+
+def monitor_music_playback():
+    """Monitor music playback and return when music stops"""
+    # Wait until music is actually playing
+    max_wait_time = 5  # Wait up to 5 seconds for music to start
+    wait_time = 0
+    while wait_time < max_wait_time:
+        if is_music_playing():
+            break
+        time.sleep(0.5)
+        wait_time += 0.5
+    
+    # Now monitor for when music stops
+    while is_music_playing():
+        time.sleep(1)  # Check every second
+    print("🎵 Music playback finished")
+
 
 def list_available_apps():
     """List some common applications that can be opened"""
@@ -184,6 +276,7 @@ def list_available_apps():
     print("📱 Common applications you can open:")
     for i, app in enumerate(common_apps, 1):
         print(f"  {i}. {app}")
+
 
 def main():
     if len(sys.argv) > 1:

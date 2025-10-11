@@ -54,9 +54,13 @@ def listen_for_command():
 
         print("🎙️ Listening (raw audio)...")
 
-        # Capture audio for up to 3 seconds
+        # Capture audio for up to 3 seconds but check microphone state periodically
         frames = []
-        for _ in range(int(RATE / CHUNK * 3)):
+        for _ in range(int(RATE / CHUNK * 3)):  # 3 seconds worth of chunks
+            if not microphone_active.is_set():  # Check if microphone was deactivated during capture
+                stream.stop_stream()
+                stream.close()
+                return None
             data = stream.read(CHUNK, exception_on_overflow=False)
             frames.append(data)
 
@@ -77,6 +81,7 @@ def listen_for_command():
         return text.lower()
 
     except sr.UnknownValueError:
+        # Return None if no speech was recognized
         return None
     except sr.RequestError as e:
         print(f"❌ Speech recognition service error: {e}")
