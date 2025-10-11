@@ -56,7 +56,7 @@ def listen_for_command():
 
         # Capture audio for up to 3 seconds but check microphone state periodically
         frames = []
-        for _ in range(int(RATE / CHUNK * 3)):  # 3 seconds worth of chunks
+        for _ in range(int(RATE / CHUNK * 6)):  # 3 seconds worth of chunks
             if not microphone_active.is_set():  # Check if microphone was deactivated during capture
                 stream.stop_stream()
                 stream.close()
