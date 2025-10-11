@@ -1,6 +1,7 @@
 """
 Command processing module for the Optimus Prime Voice Assistant
 """
+import subprocess
 import os
 import re
 import threading
@@ -18,6 +19,7 @@ class CommandProcessor:
         self.audio_handler = audio_handler
         self.tts_handler = tts_handler
         self.electron_controller = electron_controller
+        self.monitor_marks_process = None  # Track the running monitor marks process
 
     def extract_music_command(self, command):
         """
@@ -92,6 +94,22 @@ class CommandProcessor:
             # Pause animation when no command is received
             if self.electron_controller:
                 self.electron_controller.pause_animation()
+            return True  # Continue listening
+        
+        # Check for monitor marks command
+        if "monitor marks" in command.lower():
+            response = "Starting marks monitoring system for you sir!"
+            print(f"🤖 {response}")
+            self.tts_handler.speak_text_clean(response, self.electron_controller)
+            self._run_monitor_marks_script()
+            return True  # Continue listening
+        
+        # Check for stop monitoring marks command
+        if "stop monitoring marks" in command.lower():
+            response = "Stopping marks monitoring system for you sir!"
+            print(f"🤖 {response}")
+            self.tts_handler.speak_text_clean(response, self.electron_controller)
+            self._stop_monitor_marks_script()
             return True  # Continue listening
         
         # Check for exit command
@@ -226,3 +244,54 @@ class CommandProcessor:
             self.tts_handler.speak_text_clean(response, self.electron_controller)
         
         return True  # Continue listening
+    
+    def _run_monitor_marks_script(self):
+        """
+        Run the external monitor marks script
+        """
+        import subprocess
+        try:
+            # Run the monitor_marks.py script in the background
+            self.monitor_marks_process = subprocess.Popen([
+                "/Users/kavan/Desktop/egov_is_hacked/egovENV/bin/python", 
+                "/Users/kavan/Desktop/egov_is_hacked/monitor_marks.py"
+            ])
+            print("✅ Monitor marks script started successfully")
+        except Exception as e:
+            print(f"❌ Error running monitor marks script: {e}")
+            error_response = "I encountered an error while starting the marks monitoring system."
+            self.tts_handler.speak_text_clean(error_response, self.electron_controller)
+    
+    def _stop_monitor_marks_script(self):
+        """
+        Stop the running monitor marks script if it's active
+        """
+        if self.monitor_marks_process and self.monitor_marks_process.poll() is None:
+            # Process is still running, terminate it
+            try:
+                import signal
+                self.monitor_marks_process.terminate()  # Try graceful termination first
+                self.monitor_marks_process.wait(timeout=2)  # Wait up to 2 seconds for process to finish
+                print("✅ Monitor marks script stopped successfully")
+                response = "Marks monitoring system has been stopped."
+                self.tts_handler.speak_text_clean(response, self.electron_controller)
+            except subprocess.TimeoutExpired:
+                # Process didn't terminate in time, force kill it
+                try:
+                    self.monitor_marks_process.kill()  # Force kill the process
+                    self.monitor_marks_process.wait()  # Wait for it to be cleaned up
+                    print("✅ Monitor marks script force stopped")
+                    response = "Marks monitoring system has been stopped."
+                    self.tts_handler.speak_text_clean(response, self.electron_controller)
+                except Exception as e:
+                    print(f"❌ Error stopping monitor marks script: {e}")
+                    error_response = "I encountered an error while stopping the marks monitoring system."
+                    self.tts_handler.speak_text_clean(error_response, self.electron_controller)
+            except Exception as e:
+                print(f"❌ Error stopping monitor marks script: {e}")
+                error_response = "I encountered an error while stopping the marks monitoring system."
+                self.tts_handler.speak_text_clean(error_response, self.electron_controller)
+        else:
+            print("❌ No active monitor marks process to stop")
+            response = "No active marks monitoring system is running."
+            self.tts_handler.speak_text_clean(response, self.electron_controller)
