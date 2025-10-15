@@ -57,53 +57,58 @@ def main():
     inactivity_timeout = 2  # Reduced timeout for quicker animation pause
     resource_check_counter = 0
     
-    # Main listening loop with improved performance
-    while True:
-        # Monitor system resources periodically
-        resource_check_counter += 1
-        if resource_check_counter % 20 == 0:  # Check every 20 iterations
-            system_ok = SystemOptimizer.monitor_system_resources()
-            if not system_ok:
-                time.sleep(0.2)  # Longer delay if system is under load
+    try:
+        # Main listening loop with improved performance
+        while True:
+            # Monitor system resources periodically
+            resource_check_counter += 1
+            if resource_check_counter % 20 == 0:  # Check every 20 iterations
+                system_ok = SystemOptimizer.monitor_system_resources()
+                if not system_ok:
+                    time.sleep(0.2)  # Longer delay if system is under load
+                else:
+                    time.sleep(0.05)  # Normal delay
             else:
-                time.sleep(0.05)  # Normal delay
-        else:
-            time.sleep(0.05)
-        
-        # Handle listening based on current state (TTS vs music vs normal)
-        if audio_handler.is_audio_playing.is_set():
-            # During TTS playback, microphone is managed by the TTS functions
-            # We still attempt to listen but with caution
-            command = None
-            try:
-                # Try to listen with shorter timeout during TTS
+                time.sleep(0.05)
+
+            # Handle listening based on current state (TTS vs music vs normal)
+            if audio_handler.is_audio_playing.is_set():
+                # During TTS playback, microphone is managed by the TTS functions
+                # We still attempt to listen but with caution
+                command = None
+                try:
+                    # Try to listen with shorter timeout during TTS
+                    command = listen_for_command()
+                except:
+                    pass
+            elif audio_handler.is_music_playing.is_set():
+                # During music playback, completely stop listening to prevent volume fluctuations
+                # Music should play without any microphone interference
+                command = None
+                # Skip listening entirely during music playback
+                # Check if user wants to stop music (this will be handled by system events)
+                time.sleep(0.2)  # Longer pause to reduce CPU usage during music
+            else:
+                # Normal listening when neither TTS nor music is playing
                 command = listen_for_command()
-            except:
-                pass
-        elif audio_handler.is_music_playing.is_set():
-            # During music playback, completely stop listening to prevent volume fluctuations
-            # Music should play without any microphone interference
-            command = None
-            # Skip listening entirely during music playback
-            # Check if user wants to stop music (this will be handled by system events)
-            time.sleep(0.2)  # Longer pause to reduce CPU usage during music
-        else:
-            # Normal listening when neither TTS nor music is playing
-            command = listen_for_command()
-        
-        # Check for inactivity timeout
-        current_time = time.time()
-        if current_time - last_interaction_time > inactivity_timeout:
-            # Pause animation due to inactivity
-            if electron_controller:
-                electron_controller.pause_animation()
-        
-        if not command_processor.process_command(command):
-            break
-            
-        # Update last interaction time if a command was received
-        if command is not None:
-            last_interaction_time = time.time()
+
+            # Check for inactivity timeout
+            current_time = time.time()
+            if current_time - last_interaction_time > inactivity_timeout:
+                # Pause animation due to inactivity
+                if electron_controller:
+                    electron_controller.pause_animation()
+
+            if not command_processor.process_command(command):
+                break
+
+            # Update last interaction time if a command was received
+            if command is not None:
+                last_interaction_time = time.time()
+    finally:
+        # Cleanup: Stop Electron app when exiting
+        if electron_controller:
+            electron_controller.stop_electron_app()
 
 if __name__ == "__main__":
     main()
