@@ -7,16 +7,20 @@ class ElectronController:
     def __init__(self):
         self.electron_process = None
         self.socket_path = "/tmp/optimus-electron-socket"
-        self.socket_server = None
-        self.socket_thread = None
-        self.is_listening = False
+        self.socket_server = None  # No longer used; kept for backward compatibility
+        self.socket_thread = None  # No longer used; kept for backward compatibility
+        self.is_listening = False  # No longer used; kept for backward compatibility
         
     def start_electron_app(self):
         """Start the Electron application"""
         try:
-            # Remove existing socket file if it exists
+            # Ensure any stale socket owned by a previous Electron run is removed
             if os.path.exists(self.socket_path):
-                os.remove(self.socket_path)
+                try:
+                    os.remove(self.socket_path)
+                except Exception:
+                    # If removal fails, we'll let Electron handle/replace it
+                    pass
             
             # Start Electron app in the background
             self.electron_process = subprocess.Popen(
@@ -26,10 +30,8 @@ class ElectronController:
                 stderr=subprocess.PIPE
             )
             
-            # Start socket server in a separate thread
-            self.is_listening = True
-            self.socket_thread = threading.Thread(target=self._start_socket_server, daemon=True)
-            self.socket_thread.start()
+            # Wait for Electron to create and listen on the Unix socket
+            self._wait_for_socket_ready(timeout_seconds=10)
             
             print("🚀 Electron app started successfully")
             return True
@@ -39,9 +41,6 @@ class ElectronController:
     
     def stop_electron_app(self):
         """Stop the Electron application"""
-        # Stop socket server
-        self.is_listening = False
-        
         if self.electron_process:
             try:
                 # Send stop command
@@ -61,43 +60,57 @@ class ElectronController:
         # Clean up socket file
         if os.path.exists(self.socket_path):
             os.remove(self.socket_path)
-    
-    def _start_socket_server(self):
-        """Start a Unix socket server to receive commands"""
-        try:
-            self.socket_server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self.socket_server.bind(self.socket_path)
-            self.socket_server.listen(1)
-            
-            while self.is_listening:
+
+    def _wait_for_socket_ready(self, timeout_seconds: int = 10):
+        """Wait until the Electron socket is created and accepting connections."""
+        import time
+
+        deadline = time.time() + timeout_seconds
+        last_error: Exception | None = None
+
+        while time.time() < deadline:
+            # Ensure the path exists first
+            if os.path.exists(self.socket_path):
                 try:
-                    connection, client_address = self.socket_server.accept()
-                    try:
-                        data = connection.recv(1024)
-                        if data:
-                            command = data.decode('utf-8')
-                            # Process command here if needed
-                            pass
-                    finally:
-                        connection.close()
+                    test_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                    test_sock.settimeout(0.25)
+                    test_sock.connect(self.socket_path)
+                    test_sock.close()
+                    return True
                 except Exception as e:
-                    if self.is_listening:
-                        print(f"Socket server error: {e}")
-                        break
-        except Exception as e:
-            print(f"Failed to start socket server: {e}")
+                    last_error = e
+            time.sleep(0.1)
+
+        if last_error:
+            print(f"⚠️ Socket not ready in time: {last_error}")
+        else:
+            print("⚠️ Socket path not created in time")
+        return False
     
     def _send_command(self, command):
         """Send a command to the Electron app via socket"""
         try:
+            # Best-effort quick connect; if it fails, retry briefly
             sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.settimeout(0.5)
             sock.connect(self.socket_path)
             sock.sendall(command.encode('utf-8'))
             sock.close()
             return True
         except Exception as e:
-            print(f"Failed to send command: {e}")
-            return False
+            # One short retry after a brief delay in case Electron just started listening
+            try:
+                import time
+                time.sleep(0.2)
+                sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                sock.settimeout(0.5)
+                sock.connect(self.socket_path)
+                sock.sendall(command.encode('utf-8'))
+                sock.close()
+                return True
+            except Exception as e2:
+                print(f"Failed to send command: {e2}")
+                return False
     
     def play_animation(self):
         """Send play animation command to Electron app"""

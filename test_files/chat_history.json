@@ -1,0 +1,62 @@
+[
+  {
+    "role": "kg",
+    "text": "Give me the qualities of good Human,Dactor,Engineer,Artist in tabular form",
+    "timestamp": "2025-10-16T06:52:19.678Z"
+  },
+  {
+    "role": "bot",
+    "text": "[{\"Role\": \"Human\", \"Qualities\": [\"Empathy\", \"Compassion\", \"Integrity\", \"Adaptability\", \"Curiosity\"]}, {\"Role\": \"Doctor\", \"Qualities\": [\"Empathy\", \"Knowledgeable\", \"Critical Thinking\", \"Communication Skills\", \"Patience\"]}, {\"Role\": \"Engineer\", \"Qualities\": [\"Problem-solving skills\", \"Technical Knowledge\", \"Creativity\", \"Attention to detail\", \"Analytical Skills\"]}, {\"Role\": \"Artist\", \"Qualities\": [\"Creativity\", \"Imagination\", \"Passion\", \"Patience\", \"Critical Thinking\"]}]",
+    "timestamp": "2025-10-16T06:52:32.468790"
+  },
+  {
+    "role": "kg",
+    "text": "Now name 4 current cricketers with their roles,wickets,runs,batting_average in table.",
+    "timestamp": "2025-10-16T06:53:48.079Z"
+  },
+  {
+    "role": "bot",
+    "text": "[{\"Name\": \"Virat Kohli\", \"Role\": \"Batsman\", \"Runs\": \"12364\", \"Average\": \"53.78\"}, {\"Name\": \"Rohit Sharma\", \"Role\": \"Batsman\", \"Runs\": \"9088\", \"Average\": \"39.72\"}, {\"Name\": \"Jasprit Bumrah\", \"Role\": \"Bowler\", \"Wickets\": \"165\", \"Best_Innings\": \"6-27\"}, {\"Name\": \"Ravichandran Ashwin\", \"Role\": \"Allrounder\", \"Runs\": \"4893\", \"Wickets\": \"370}]",
+    "timestamp": "2025-10-16T06:53:58.654801"
+  },
+  {
+    "role": "kg",
+    "text": "give in proper table view",
+    "timestamp": "2025-10-16T06:54:44.636Z"
+  },
+  {
+    "role": "bot",
+    "text": "[{\"Name\": \"Virat Kohli\", \"Role\": \"Batsman\", \"Runs\": 12364, \"Average\": 53.78}, {\"Name\": \"Rohit Sharma\", \"Role\": \"Batsman\", \"Runs\": 9088, \"Average\": 39.72}, {\"Name\": \"Jasprit Bumrah\", \"Role\": \"Bowler\", \"Wickets\": 165, \"Best_Innings\": \"6-27\"}, {\"Name\": \"Ravichandran Ashwin\", \"Role\": \"Allrounder\", \"Runs\": 4893, \"Wickets\": 370}]",
+    "timestamp": "2025-10-16T06:54:54.898609"
+  },
+  {
+    "role": "kg",
+    "text": "Nice",
+    "timestamp": "2025-10-16T06:55:34.709Z"
+  },
+  {
+    "role": "bot",
+    "text": " I'm glad you found it helpful! If there's anything else I can assist you with, just let me know. Have a great day!",
+    "timestamp": "2025-10-16T06:55:38.624450"
+  },
+  {
+    "role": "kg",
+    "text": "Give defence related data avaialable in internet of India,China,USA,Russia and France about their prime fighterJET , and number of jets they have",
+    "timestamp": "2025-10-16T07:23:58.995Z"
+  },
+  {
+    "role": "bot",
+    "text": " Here is a table summarizing the information I found on the primary fighter jets and their total numbers from various sources available on the internet:\n\n| Country | Fighter Jet (Primary) | Number in Fleet |\n|---------|----------------------|-----------------|\n| India   | Su-30MKI, Rafale, Tejas | 272, 36, 83 (approx.) |\n| China   | J-10, J-11, J-20 | 500+, 200+, 200+ (approx.) |\n| USA     | F-22 Raptor, F-15 Eagle, F-16 Fighting Falcon | 187, 1,493, 2,454 (approx.) |\n| Russia  | Su-35, MiG-35, Su-57 | 100+, 20+, 50 (approx.) |\n| France  | Rafale, Mirage 2000, Dassault Falcon 4 | 180, 260, 50 (approx.) |\n\nThese numbers are approximate and may vary slightly due to updates and changes in the fleets over time. It's also important to note that there can be multiple versions and variants of each fighter jet model within the fleet of a particular country.",
+    "timestamp": "2025-10-16T07:24:25.317961"
+  },
+  {
+    "role": "kg",
+    "text": "in table form",
+    "timestamp": "2025-10-16T07:24:34.175Z"
+  },
+  {
+    "role": "bot",
+    "text": "[{\"Country\": \"India\", \"Fighter Jet (Primary)\": [\"Su-30MKI\", \"Rafale\", \"Tejas\"], \"Number in Fleet\": \"272, 36, 83 (approx.)\"}, {\"Country\": \"China\", \"Fighter Jet (Primary)\": [\"J-10\", \"J-11\", \"J-20\"], \"Number in Fleet\": \"500+, 200+, 200+ (approx.)\"}, {\"Country\": \"USA\", \"Fighter Jet (Primary)\": [\"F-22 Raptor\", \"F-15 Eagle\", \"F-16 Fighting Falcon\"], \"Number in Fleet\": \"187, 1493, 2454 (approx.)\"}, {\"Country\": \"Russia\", \"Fighter Jet (Primary)\": [\"Su-35\", \"MiG-35\", \"Su-57\"], \"Number in Fleet\": \"100+, 20+, 50 (approx.)\"}, {\"Country\": \"France\", \"Fighter Jet (Primary)\": [\"Rafale\", \"Mirage 2000\", \"Dassault Falcon 4\"], \"Number in Fleet\": \"180, 260, 50 (approx.)\"}]",
+    "timestamp": "2025-10-16T07:24:58.166160"
+  }
+]

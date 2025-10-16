@@ -5,3 +5,5 @@ pyaudio
 pyautogui
 psutil
 deep_translator
+langchain
+langchain-ollama

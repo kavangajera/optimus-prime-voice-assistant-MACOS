@@ -1,0 +1,18 @@
+[
+  {
+    "Role": "Human",
+    "Qualities": ["Empathy", "Communication Skills", "Adaptability", "Resilience", "Integrity"]
+  },
+  {
+    "Role": "Doctor",
+    "Qualities": ["Knowledgeable", "Compassionate", "Critical Thinking", "Problem-Solving Skills", "Patience"]
+  },
+  {
+    "Role": "Engineer",
+    "Qualities": ["Innovative", "Analytical Skills", "Technical Knowledge", "Creativity", "Attention to Detail"]
+  },
+  {
+    "Role": "Artist",
+    "Qualities": ["Creativity", "Imagination", "Expressiveness", "Patience", "Critical Thinking"]
+  }
+]

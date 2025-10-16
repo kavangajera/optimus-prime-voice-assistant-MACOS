@@ -81,9 +81,6 @@ def main():
             print("❌ No application name provided.")
 
 
-# Global variable to store chatbox process
-chatbox_process = None
-
 # Global functions for external use
 def open_app(app_name):
     """Open an application"""
@@ -123,10 +120,9 @@ def stop_monitor_marks():
 def open_chatbox():
     """Open the chatbox application"""
     import subprocess
-    global chatbox_process
     try:
         # Run the Electron app for the chatbox from the test_files directory
-        chatbox_process = subprocess.Popen(["npm", "start"], cwd="./test_files", shell=False)
+        subprocess.Popen(["npm", "start"], cwd="./test_files", shell=False)
         return True
     except Exception as e:
         print(f"Error opening chatbox: {e}")
@@ -134,24 +130,21 @@ def open_chatbox():
 
 def close_chatbox():
     """Close the chatbox application"""
-    global chatbox_process
+    import subprocess
+    import os
+    import signal
+    import psutil
     try:
-        if chatbox_process and chatbox_process.poll() is None:  # Check if process is still running
-            chatbox_process.terminate()  # Terminate the process gracefully
-            chatbox_process.wait(timeout=5)  # Wait up to 5 seconds for it to terminate
-            chatbox_process = None
-            return True
-        else:
-            # If we don't have a reference to the process, try to find it by other means
-            import subprocess as sp
-            import signal
+        # Find and kill specific chatbox processes more safely
+        for proc in psutil.process_iter():
             try:
-                # Kill any npm processes related to test_files (though this is less precise)
-                sp.run(["pkill", "-f", "npm start"], check=False, shell=True)
-                sp.run(["pkill", "-f", "json_to_table"], check=False)
-                return True
-            except:
-                return False
+                # Check if the process name is Electron and the command line contains json_to_table.html
+                if proc.name() == "Electron" and "json_to_table.html" in " ".join(proc.cmdline()):
+                    proc.kill()
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                # Handle potential errors during process enumeration
+                pass
+        return True
     except Exception as e:
         print(f"Error closing chatbox: {e}")
         return False

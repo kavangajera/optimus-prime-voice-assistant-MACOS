@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval" />
+    <title>Optimus Prime Table View</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: transparent;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      }
+      .panel {
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        padding: 15px;
+        background: rgba(10, 61, 98, 0.25);
+        color: #fff;
+        border-radius: 15px;
+        border: 1px solid rgba(52, 152, 219, 0.3);
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      
+      .header {
+        display: flex;
+        align-items: center;
+        padding: 8px 0 15px;
+        margin-bottom: 10px;
+        border-bottom: 1px solid rgba(255,255,255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding-left: 5px;
+        justify-content: space-between;
+      }
+      
+      .header-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        margin-right: 12px;
+        font-weight: bold;
+        font-size: 20px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        background: #2c3e50;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      
+      .header-icon img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      
+      .header-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #ecf0f1;
+        flex: 1;
+      }
+      
+      #close-btn {
+        background: rgba(231, 76, 60, 0.3);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        margin-left: 10px;
+      }
+      
+      #close-btn:hover {
+        background: rgba(231, 76, 60, 0.5);
+      }
+      
+      .content-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px 0;
+      }
+      
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        background: rgba(44, 62, 80, 0.3);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      
+      th, td {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 8px 12px;
+        text-align: left;
+        vertical-align: top;
+        color: #ecf0f1;
+      }
+      
+      th {
+        background: rgba(52, 152, 219, 0.3);
+        color: #ecf0f1;
+      }
+      
+      .subtable {
+        margin: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      
+      .array-list {
+        margin: 0;
+        padding-left: 15px;
+        list-style-type: disc;
+      }
+      
+      .array-list li {
+        margin-bottom: 5px;
+      }
+      
+      /* Scrollbar styling */
+      .content-container::-webkit-scrollbar {
+        width: 6px;
+      }
+      .content-container::-webkit-scrollbar-track {
+        background: rgba(0,0,0,0.1);
+        border-radius: 10px;
+      }
+      .content-container::-webkit-scrollbar-thumb {
+        background: #3498db;
+        border-radius: 10px;
+      }
+      .content-container::-webkit-scrollbar-thumb:hover {
+        background: #2980b9;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="panel" id="panel">
+      <div class="header">
+        <div class="header-icon">📊</div>
+        <div class="header-title">Optimus Table View</div>
+        <button id="close-btn" title="Close Window">✕</button>
+      </div>
+      <div class="content-container" id="tableContainer">
+        <!-- Table will be rendered here -->
+      </div>
+    </div>
+
+    <script>
+      const { ipcRenderer } = require('electron');
+      
+      // Get the close button and add event listener
+      document.getElementById('close-btn').addEventListener('click', function() {
+        window.close();
+      });
+
+      // Load JSON and create table when page loads
+      document.addEventListener('DOMContentLoaded', function() {
+        // Load from temp.json file
+        const fs = require('fs');
+        const path = require('path');
+        const TEMP_JSON_PATH = path.resolve(__dirname, 'temp.json');
+        
+        try {
+          const jsonData = JSON.parse(fs.readFileSync(TEMP_JSON_PATH, 'utf-8'));
+          const container = document.getElementById('tableContainer');
+          container.innerHTML = '';
+          container.appendChild(createTableFromJSON(jsonData));
+        } catch (err) {
+          console.error('Error loading temp.json:', err);
+          document.getElementById('tableContainer').innerHTML = '<div>Error loading data: ' + err.message + '</div>';
+        }
+      });
+
+      // 🔁 Recursive function to create table from JSON
+      function createTableFromJSON(data) {
+        if (!data) return document.createTextNode('');
+
+        const table = document.createElement('table');
+        if (Array.isArray(data)) {
+          // Get all unique keys from array
+          const allKeys = new Set();
+          data.forEach(item => {
+            if (typeof item === 'object' && item !== null) {
+              Object.keys(item).forEach(k => allKeys.add(k));
+            }
+          });
+
+          const thead = document.createElement('thead');
+          const headerRow = document.createElement('tr');
+          allKeys.forEach(k => {
+            const th = document.createElement('th');
+            th.textContent = k;
+            headerRow.appendChild(th);
+          });
+          thead.appendChild(headerRow);
+          table.appendChild(thead);
+
+          const tbody = document.createElement('tbody');
+          data.forEach(item => {
+            const tr = document.createElement('tr');
+            allKeys.forEach(k => {
+              const td = document.createElement('td');
+              const val = item ? item[k] : null;
+              if (Array.isArray(val)) {
+                // Handle array values with bulleted list
+                if (val.length > 0) {
+                  const list = document.createElement('ul');
+                  list.className = 'array-list';
+                  
+                  val.forEach(arrayItem => {
+                    const li = document.createElement('li');
+                    
+                    if (typeof arrayItem === 'object' && arrayItem !== null) {
+                      // If the array item is an object, create a subtable
+                      const subTable = createTableFromJSON(arrayItem);
+                      subTable.classList.add('subtable');
+                      li.appendChild(subTable);
+                    } else {
+                      // If the array item is a primitive, display as text
+                      li.textContent = arrayItem ?? '';
+                    }
+                    
+                    list.appendChild(li);
+                  });
+                  
+                  td.appendChild(list);
+                } else {
+                  td.textContent = '';
+                }
+              } else if (typeof val === 'object' && val !== null) {
+                const subTable = createTableFromJSON(val);
+                subTable.classList.add('subtable');
+                td.appendChild(subTable);
+              } else {
+                td.textContent = val ?? '';
+              }
+              tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+          });
+          table.appendChild(tbody);
+        } else if (typeof data === 'object') {
+          // Handle a single object (not array)
+          const tbody = document.createElement('tbody');
+          for (const key in data) {
+            const tr = document.createElement('tr');
+            const th = document.createElement('th');
+            th.textContent = key;
+            const td = document.createElement('td');
+            const val = data[key];
+            
+            if (Array.isArray(val)) {
+              // Handle array values with bulleted list
+              if (val.length > 0) {
+                const list = document.createElement('ul');
+                list.className = 'array-list';
+                
+                val.forEach(arrayItem => {
+                  const li = document.createElement('li');
+                  
+                  if (typeof arrayItem === 'object' && arrayItem !== null) {
+                    // If the array item is an object, create a subtable
+                    const subTable = createTableFromJSON(arrayItem);
+                    subTable.classList.add('subtable');
+                    li.appendChild(subTable);
+                  } else {
+                    // If the array item is a primitive, display as text
+                    li.textContent = arrayItem ?? '';
+                  }
+                  
+                  list.appendChild(li);
+                });
+                
+                td.appendChild(list);
+              } else {
+                td.textContent = '';
+              }
+            } else if (typeof val === 'object' && val !== null) {
+              const subTable = createTableFromJSON(val);
+              subTable.classList.add('subtable');
+              td.appendChild(subTable);
+            } else {
+              td.textContent = val ?? '';
+            }
+            
+            tr.appendChild(th);
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+          }
+          table.appendChild(tbody);
+        } else {
+          // Handle primitive value
+          const td = document.createElement('td');
+          td.textContent = data;
+          const tr = document.createElement('tr');
+          tr.appendChild(td);
+          table.appendChild(tr);
+        }
+
+        return table;
+      }
+    </script>
+  </body>
+</html>

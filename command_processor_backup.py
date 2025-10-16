@@ -9,7 +9,7 @@ import time
 import re
 import threading
 import time
-from app_launcher import open_app, close_app, play_music, send_whatsapp_message, monitor_music_playback, start_monitor_marks, stop_monitor_marks , search_safari, open_chatbox, close_chatbox
+from app_launcher import open_app, close_app, play_music, send_whatsapp_message, monitor_music_playback, start_monitor_marks, stop_monitor_marks , search_safari
 from speech_to_text import microphone_active
 from text_to_speech import get_tts_instance
 
@@ -127,24 +127,6 @@ class CommandProcessor:
                 response = "No active marks monitoring system is running."
                 self.tts_handler.speak_text_clean(response, self.electron_controller)
             return True  # Continue listening
-        
-        # Check for exit command
-        
-        # Check for open chatbox command
-        if "open chat box" in command.lower():
-            response = "Opening chatbox for you sir!"
-            print(f"🤖 {response}")
-            self.tts_handler.speak_text_clean(response, self.electron_controller)
-            open_chatbox()
-            return True  # Continue listening
-        
-        # Check for close chatbox command
-        if "close chat box" in command.lower():
-            response = "Closing chatbox for you sir!"
-            print(f"🤖 {response}")
-            self.tts_handler.speak_text_clean(response, self.electron_controller)
-            close_chatbox()
-            return True  # Continue listening        if "transform optimus" in command.lower():
         
         # Check for exit command
         if "transform optimus" in command.lower():

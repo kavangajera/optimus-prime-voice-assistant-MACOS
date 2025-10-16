@@ -1,0 +1,52 @@
+[
+  {
+    "title": "Hera Pheri",
+    "year": 2000
+  },
+  {
+    "title": "Golmaal Series",
+    "movies": [
+      {
+        "actors": [
+          {"Name":"Ajay Devgn"},
+            {"Name":"Arshad Warsi"},
+            {"Name":"Tusshar Kapoor"},
+            {"Name":"Sharman Joshi"},
+            {"Name":"Kunal Khemu"},
+            {"Name":"Madhuri Dixit"},
+            {"Name":"Parineeti Chopra"}
+        ],
+        "title": "Golmaal",
+        "year": 2006
+      },
+      {
+        "title": "Golmaal Returns",
+        "year": 2008
+      },
+      {
+        "title": "Golmaal 3",
+        "year": 2010
+      },
+      {
+        "title": "Golmaal Again",
+        "year": 2017
+      },
+      {
+        "title": "Golmaal Vs. Bollywood",
+        "year": 2022
+      }
+    ]
+  },
+  {
+    "title": "Andaz Apna Apna",
+    "year": 1994
+  },
+  {
+    "title": "Munnabhai MBBS",
+    "year": 2003
+  },
+  {
+    "title": "Dulhe Raja",
+    "year": 1998
+  }
+]

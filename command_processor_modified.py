@@ -131,7 +131,7 @@ class CommandProcessor:
         # Check for exit command
         
         # Check for open chatbox command
-        if "open chat box" in command.lower():
+        if "open chatbox" in command.lower():
             response = "Opening chatbox for you sir!"
             print(f"🤖 {response}")
             self.tts_handler.speak_text_clean(response, self.electron_controller)
@@ -139,15 +139,12 @@ class CommandProcessor:
             return True  # Continue listening
         
         # Check for close chatbox command
-        if "close chat box" in command.lower():
+        if "close chatbox" in command.lower():
             response = "Closing chatbox for you sir!"
             print(f"🤖 {response}")
             self.tts_handler.speak_text_clean(response, self.electron_controller)
             close_chatbox()
             return True  # Continue listening        if "transform optimus" in command.lower():
-        
-        # Check for exit command
-        if "transform optimus" in command.lower():
             response = "Rollouting Sir! Good bye..."
             print(f"🤖 {response}")
             self.tts_handler.speak_text_clean(response, self.electron_controller)

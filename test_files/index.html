@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'" />
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: transparent;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      }
+      .panel {
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        padding: 15px;
+        background: rgba(10, 61, 98, 0.25);
+        color: #fff;
+        border-radius: 15px;
+        border: 1px solid rgba(52, 152, 219, 0.3);
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        padding: 8px 0 15px;
+        margin-bottom: 10px;
+        border-bottom: 1px solid rgba(255,255,255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding-left: 5px;
+      }
+      .header-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        margin-right: 12px;
+        font-weight: bold;
+        font-size: 20px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        background: #2c3e50;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      .header-icon img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .header-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #ecf0f1;
+      }
+      .messages-container {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 5px 0;
+        max-height: calc(100% - 80px);
+      }
+      .message {
+        max-width: 80%;
+        padding: 10px 14px;
+        border-radius: 18px;
+        font-size: 14px;
+        line-height: 1.4;
+        position: relative;
+        word-wrap: break-word;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        animation: fadeIn 0.3s ease-out;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .user-message {
+        align-self: flex-end;
+        background: rgba(52, 152, 219, 0.3);
+        color: white;
+        border-bottom-right-radius: 5px;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .bot-message {
+        align-self: flex-start;
+        background: rgba(44, 62, 80, 0.3);
+        color: #ecf0f1;
+        border-bottom-left-radius: 5px;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .input-container {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      #user-input {
+        flex: 1;
+        padding: 12px 15px;
+        border: none;
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.15);
+        color: #ecf0f1;
+        font-size: 14px;
+        box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      #user-input::placeholder {
+        color: #95a5a6;
+      }
+      #user-input:focus {
+        outline: none;
+        box-shadow: inset 0 2px 5px rgba(0,0,0,0.2), 0 0 0 2px #3498db;
+      }
+      #send-btn {
+        padding: 12px 20px;
+        border: none;
+        border-radius: 24px;
+        background: rgba(231, 76, 60, 0.3);
+        color: white;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        transition: all 0.2s;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      #send-btn:hover {
+        background: rgba(231, 76, 60, 0.5);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 10px rgba(0,0,0,0.25);
+      }
+      #send-btn:active {
+        transform: translateY(0);
+      }
+      .faint {
+        opacity: 0.6;
+        align-self: center;
+      }
+      /* Scrollbar styling */
+      .messages-container::-webkit-scrollbar {
+        width: 6px;
+      }
+      .messages-container::-webkit-scrollbar-track {
+        background: rgba(0,0,0,0.1);
+        border-radius: 10px;
+      }
+      .messages-container::-webkit-scrollbar-thumb {
+        background: #3498db;
+        border-radius: 10px;
+      }
+      .messages-container::-webkit-scrollbar-thumb:hover {
+        background: #2980b9;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="panel" id="panel">
+      <div class="header">
+        <div class="header-icon">
+          <img src="/Users/kavan/Desktop/python-programming/langChain/image.png" alt="Optimus Prime">
+        </div>
+        <div class="header-title">Optimus Chat</div>
+      </div>
+      <div class="messages-container" id="messages-container">
+        <div class="message faint">Loading…</div>
+      </div>
+      <div class="input-container">
+        <input type="text" id="user-input" placeholder="Message Optimus..." autocomplete="off" />
+        <button id="send-btn">Send</button>
+      </div>
+    </div>
+    <script>
+      const { ipcRenderer } = require('electron');
+      const fs = require('fs');
+      const path = require('path');
+      const { exec } = require('child_process');
+      const HISTORY_FILE = path.resolve(__dirname, 'chat_history.json');
+
+      // Add CSS for input area
+      const style = document.createElement('style');
+      style.textContent = `
+        .input-container {
+          display: flex;
+          gap: 8px;
+          margin-top: 8px;
+        }
+        #user-input {
+          flex: 1;
+          padding: 6px 10px;
+          border: 1px solid rgba(255,255,255,0.3);
+          border-radius: 5px;
+          background: rgba(0,0,0,0.2);
+          color: white;
+          font-size: 13px;
+        }
+        #user-input::placeholder {
+          color: rgba(255,255,255,0.6);
+        }
+        #user-input:focus {
+          outline: none;
+          border-color: rgba(255,255,255,0.6);
+        }
+        #send-btn {
+          padding: 6px 15px;
+          border: 1px solid rgba(255,255,255,0.3);
+          border-radius: 5px;
+          background: rgba(255,255,255,0.15);
+          color: white;
+          font-size: 13px;
+          cursor: pointer;
+        }
+        #send-btn:hover {
+          background: rgba(255,255,255,0.25);
+        }
+        .messages-container {
+          flex: 1;
+          overflow-y: auto;
+          max-height: calc(100% - 40px);
+          margin-bottom: 8px;
+        }
+        .kg {
+          color: #aaffaa; /* Light green for user messages */
+        }
+        .bot {
+          color: #aaaaff; /* Light blue for bot messages */
+        }
+        .role {
+          min-width: 35px; /* Slightly wider for better readability */
+        }
+      `;
+      document.head.appendChild(style);
+
+      let currentHistory = [];
+      let container = null;
+
+      function createMessageElement(entry) {
+        const role = entry.role;
+        const msg = entry.text;
+        
+        const messageDiv = document.createElement('div');
+        
+        // Add role-specific class for styling
+        if (role === 'kg') {
+          messageDiv.className = 'message user-message';
+        } else {
+          messageDiv.className = 'message bot-message';
+        }
+        
+        messageDiv.textContent = msg;
+        return messageDiv;
+      }
+
+      function render(newHistory) {
+        if (!container) {
+          container = document.getElementById('messages-container');
+        }
+        
+        // Check if user was scrolled near the bottom before updating
+        const isScrolledToBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 10;
+        let shouldAutoScroll = isScrolledToBottom;
+        
+        // If no messages before, clear and show all
+        if (currentHistory.length === 0) {
+          container.innerHTML = '';
+          if (newHistory.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'row faint';
+            empty.textContent = 'No messages';
+            container.appendChild(empty);
+            return;
+          }
+          for (const entry of newHistory) {
+            container.appendChild(createMessageElement(entry));
+          }
+          currentHistory = [...newHistory];
+        } else {
+          // Find new messages to append
+          const newMessages = newHistory.slice(currentHistory.length);
+          
+          // If there are new messages, append them
+          if (newMessages.length > 0) {
+            for (const entry of newMessages) {
+              container.appendChild(createMessageElement(entry));
+            }
+            currentHistory = [...newHistory];
+          }
+        }
+        
+        // Auto-scroll to bottom only if user was already near the bottom
+        if (shouldAutoScroll) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }
+
+      function refresh() {
+        try {
+          const content = fs.readFileSync(HISTORY_FILE, 'utf-8');
+          const history = JSON.parse(content);
+          render(history);
+        } catch(e) {
+          // If file doesn't exist or is invalid JSON, render empty
+          if (e instanceof SyntaxError || e.code === 'ENOENT') {
+            render([]);
+          }
+        }
+      }
+
+      // Handle user input
+      document.getElementById('send-btn').addEventListener('click', handleUserInput);
+      document.getElementById('user-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          handleUserInput();
+        }
+      });
+
+      function handleUserInput() {
+        const input = document.getElementById('user-input');
+        const userText = input.value.trim();
+        if (!userText) return;
+
+        // Clear input
+        input.value = '';
+
+        // Add user message to history file immediately for instant UI feedback
+        let history = [];
+        try {
+          const content = fs.readFileSync(HISTORY_FILE, 'utf-8');
+          history = JSON.parse(content);
+        } catch (e) {
+          // If file doesn't exist or invalid, start with empty array
+          history = [];
+        }
+        
+        const userEntry = {
+          "role": "kg",
+          "text": userText,
+          "timestamp": new Date().toISOString()
+        };
+        
+        history.push(userEntry);
+        fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
+
+        // The Python script will add the bot response to the same file
+
+        // Execute Python in the correct environment
+        const pythonScript = `
+import sys
+sys.path.append('.')
+import os
+os.chdir('${__dirname}')
+from chat_service import ChatService
+service = ChatService()
+response = service.ask('${userText.replace(/'/g, "\\'")}')
+print(response)
+`;
+
+        exec('source /Users/kavan/Desktop/python-programming/langChain/genaiENV/bin/activate && python3 -c "' + pythonScript + '"', {shell: '/bin/bash'}, (error, stdout, stderr) => {
+          if (error) {
+            console.error('Python script error:', error);
+            // Write error to history file
+            const fs = require('fs');
+            const path = require('path');
+            const HISTORY_FILE = path.resolve(__dirname, 'chat_history.json');
+            
+            let history = [];
+            try {
+              const content = fs.readFileSync(HISTORY_FILE, 'utf-8');
+              history = JSON.parse(content);
+            } catch (e) {
+              // If file doesn't exist or invalid, start with empty array
+              history = [];
+            }
+            
+            const errorEntry = {
+              "role": "bot",
+              "text": `Sorry, I encountered an error processing your request. [${error.message}]`,
+              "timestamp": new Date().toISOString()
+            };
+            
+            history.push(errorEntry);
+            fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
+            return;
+          }
+          console.log('Python response:', stdout);
+        });
+      }
+
+      ipcRenderer.on('log-updated', refresh);
+      // initial load and periodic refresh as fallback
+      currentHistory = []; // Initialize as empty to force full render on first load
+      refresh();
+      setInterval(refresh, 2000);
+    </script>
+  </body>
+</html>
