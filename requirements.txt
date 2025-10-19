@@ -7,3 +7,4 @@ psutil
 deep_translator
 langchain
 langchain-ollama
+pyobjc

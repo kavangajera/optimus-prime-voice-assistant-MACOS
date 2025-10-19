@@ -11,8 +11,8 @@ class MarksMonitor:
         try:
             # Run the monitor_marks.py script in the background
             self.monitor_marks_process = subprocess.Popen([
-                "/Users/kavan/Desktop/egov_is_hacked/egovENV/bin/python",
-                "/Users/kavan/Desktop/egov_is_hacked/monitor_marks.py"
+                "/Users/kavan/Documents/GitHub/egov_is_hacked/egovENV/bin/python",
+                "/Users/kavan/Documents/GitHub/egov_is_hacked/monitor_marks.py"
             ])
             print("✅ Monitor marks script started successfully")
             return True

@@ -9,9 +9,11 @@ import time
 import re
 import threading
 import time
-from app_launcher import open_app, close_app, play_music, send_whatsapp_message, monitor_music_playback, start_monitor_marks, stop_monitor_marks , search_safari, open_chatbox, close_chatbox
+from app_launcher import open_app, close_app, play_music, monitor_music_playback, start_monitor_marks, stop_monitor_marks , search_safari, open_chatbox, close_chatbox, summarize_screen
+from functions.messenger import Messenger
 from speech_to_text import microphone_active
 from text_to_speech import get_tts_instance
+from functions.file_operations import perform_file_operation
 
 
 class CommandProcessor:
@@ -19,6 +21,7 @@ class CommandProcessor:
         self.audio_handler = audio_handler
         self.tts_handler = tts_handler
         self.electron_controller = electron_controller
+        self.messenger = Messenger()
 
     def extract_music_command(self, command):
         """
@@ -104,6 +107,19 @@ class CommandProcessor:
             if not success:
                 error_response = "I encountered an error while searching in Safari."
                 self.tts_handler.speak_text_clean(error_response, self.electron_controller)
+            return True  # Continue listening
+        
+        # Check for screen summarization command
+        if "summarise screen" in command.lower() or "summarise current screen" in command.lower():
+            response = "Summarizing image for you sir!"
+            print(f"🤖 {response}")
+            self.tts_handler.speak_text_clean(response, self.electron_controller)
+            
+            # Get summary from screen
+            summary = summarize_screen()
+            
+            # Show the summary in a popup centered on the screen (like in index.html)
+            self.show_summary_popup(summary)
             return True  # Continue listening
         
         # Check for monitor marks command
@@ -240,6 +256,36 @@ class CommandProcessor:
             
             return True
         
+        # Check for file operations commands
+        file_operation_keywords = [
+            'copy', 'move', 'delete', 'create', 'paste', 'open', 'close', 'folder', 
+            'directory', 'file', 'files', 'folders', 'directories', 'put', 'send', 
+            'transfer', 'shift', 'erase', 'remove', 'trash', 'make', 'build', 'go to',
+            'navigate to','rename', 'enter', 'downloads', 'documents', 'desktop', 'home', 'kavan'
+        ]
+        
+        # Check if command contains file operation keywords
+        if any(keyword in command.lower() for keyword in file_operation_keywords):
+            # Process as file operation command
+            try:
+                result = perform_file_operation(command)
+                
+                # Check if this is a navigation command (returns a path instead of operation result)
+                if result.startswith("Navigation path: "):
+                    path = result.replace("Navigation path: ", "").strip()
+                    response = f"Going to {path} for you, sir!"
+                else:
+                    response = f"{result}, sir!"
+                
+                print(f"🤖 {response}")
+                self.tts_handler.speak_text_clean(response, self.electron_controller)
+                return True
+            except Exception as e:
+                response = f"Error with file operation: {str(e)}, sir!"
+                print(f"🤖 {response}")
+                self.tts_handler.speak_text_clean(response, self.electron_controller)
+                return True
+        
         # Check for WhatsApp message commands
         # Looking for patterns like "message contact with message" or "send message to contact with message"
         whatsapp_match = re.search(r"(?:message|send.*?message.*?to|whatsapp)\s+(.+?)\s+(?:with|saying)\s+(.+)", command, re.IGNORECASE)
@@ -249,11 +295,13 @@ class CommandProcessor:
             # Remove "for me" or "for me sir" if present
             contact_name = re.sub(r"\s+for\s+me.*$", "", contact_name)
             message = re.sub(r"\s+for\s+me.*$", "", message)
-            
+
             response = f"Sending message to {contact_name} for you sir!"
             print(f"🤖 {response}")
             self.tts_handler.speak_text_clean(response, self.electron_controller)
-            send_whatsapp_message(contact_name, message)
+            # Use the messenger's process_message_request instead of direct send_whatsapp_message
+            result = self.messenger.process_message_request(command)
+            print(f"Message result: {result}")
             return True
         
         # Extract app name and action from command
@@ -278,5 +326,12 @@ class CommandProcessor:
             self.tts_handler.speak_text_clean(response, self.electron_controller)
         
         return True  # Continue listening
+
+    def show_summary_popup(self, summary):
+        """
+        Show a summary popup in the Electron application
+        """
+        if self.electron_controller:
+            self.electron_controller.show_summary_popup(summary)
     
 

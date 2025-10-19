@@ -1,5 +1,4 @@
 import speech_recognition as sr
-import pyaudio
 import time
 import threading
 
@@ -7,72 +6,44 @@ import threading
 microphone_active = threading.Event()
 microphone_active.set()  # Start with microphone active
 
-
 # Global recognizer instance for better performance
 _recognizer = None
-_pyaudio = None
-
-# Audio parameters
-RATE = 16000
-CHUNK = 1024
-CHANNELS = 1
-FORMAT = pyaudio.paInt16
+_microphone = None
 
 def get_recognizer():
-    """Get or create recognizer instance for better performance"""
-    global _recognizer, _pyaudio
+    """Get or create recognizer and microphone instances for better performance"""
+    global _recognizer, _microphone
     if _recognizer is None:
         _recognizer = sr.Recognizer()
         _recognizer.dynamic_energy_threshold = True
         _recognizer.energy_threshold = 2500
-        _recognizer.pause_threshold = 4
+        _recognizer.pause_threshold = 2.0  # Stop listening after 2.0 seconds of silence
         _recognizer.operation_timeout = 2
         _recognizer.phrase_threshold = 0.3
 
-        _pyaudio = pyaudio.PyAudio()
-    return _recognizer, _pyaudio
+        _microphone = sr.Microphone()
+    return _recognizer, _microphone
 
 def listen_for_command():
     """
-    Optimized voice command listener with raw PyAudio input
+    Voice command listener that listens continuously until silence is detected
     """
     if not microphone_active.is_set():
-        time.sleep(0.1) # 
+        time.sleep(0.05)
         return None
 
-    recognizer, pa = get_recognizer()
+    recognizer, microphone = get_recognizer()
 
     try:
-        # Open raw audio stream
-        stream = pa.open(
-            format=FORMAT,
-            channels=CHANNELS,
-            rate=RATE,
-            input=True,
-            frames_per_buffer=CHUNK
-        )
+        print("🎙️ Listening...")
 
-        print("🎙️ Listening (raw audio)...")
-
-        # Capture audio for up to 10 seconds but check microphone state periodically
-        frames = []
-        for _ in range(int(RATE / CHUNK * 10)):  #  10 seconds max
-            if not microphone_active.is_set():  # Check if microphone was deactivated during capture
-                stream.stop_stream()
-                stream.close()
-                return None
-            data = stream.read(CHUNK, exception_on_overflow=False)
-            frames.append(data)
-
-        stream.stop_stream()
-        stream.close()
-
-        # Convert raw frames into AudioData for recognizer
-        audio_data = sr.AudioData(b"".join(frames), RATE, 2)
+        # Listen continuously until pause_threshold (2.0s silence) is detected
+        with microphone as source:
+            audio = recognizer.listen(source, timeout=1, phrase_time_limit=10)
 
         # Recognize speech using Google
         text = recognizer.recognize_google(
-            audio_data,
+            audio,
             language="en-US",
             show_all=False
         )
@@ -80,6 +51,9 @@ def listen_for_command():
         print(f"✅ Recognized: {text}")
         return text.lower()
 
+    except sr.WaitTimeoutError:
+        # Timeout occurred, no speech detected within timeout period
+        return None
     except sr.UnknownValueError:
         # Return None if no speech was recognized
         return None

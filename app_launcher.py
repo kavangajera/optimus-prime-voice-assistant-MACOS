@@ -4,6 +4,8 @@ from functions.music_controller import MusicController
 from functions.messenger import Messenger
 from functions.marks_monitor import MarksMonitor
 from functions.safari_searcher import SafariSearcher
+from functions.screen_summarizer import capture_screen_and_summarize
+from functions.file_operations import perform_file_operation
 
 
 def main():
@@ -126,7 +128,7 @@ def open_chatbox():
     global chatbox_process
     try:
         # Run the Electron app for the chatbox from the test_files directory
-        chatbox_process = subprocess.Popen(["npm", "start"], cwd="./test_files", shell=False)
+        chatbox_process = subprocess.Popen(["npm", "start"], cwd="./chat_box", shell=False)
         return True
     except Exception as e:
         print(f"Error opening chatbox: {e}")
@@ -160,6 +162,16 @@ def search_safari(query):
     """Search in Safari"""
     safari_searcher = SafariSearcher()
     return safari_searcher.search_in_safari(query)
+
+def summarize_screen():
+    """Summarize content from the current screen"""
+    from functions.screen_summarizer import capture_screen_and_summarize
+    return capture_screen_and_summarize()
+
+def perform_file_operation(command):
+    """Perform file operations like copy, move, delete, etc."""
+    from functions.file_operations import perform_file_operation
+    return perform_file_operation(command)
 
 if __name__ == "__main__":
     main()

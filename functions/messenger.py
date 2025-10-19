@@ -1,9 +1,11 @@
 import subprocess
 import time
+import json
+from chat_box.chat_service import ChatService
 
 class Messenger:
     def __init__(self):
-        pass
+        self.chat_service = ChatService()
 
     def send_whatsapp_message(self, contact_name, message):
         """Send a message to a WhatsApp contact"""
@@ -104,3 +106,46 @@ class Messenger:
         except FileNotFoundError:
             print("❌ 'open' command not found. This script is designed for macOS.")
             return False
+
+    def process_message_request(self, user_input):
+        """Process user input to extract message and contact using NLP"""
+        # Template prompt for the chat service
+        template_prompt = """
+        You are an assistant that extracts message details from user speech.
+        When user says something like 'send message Hi to k a v a n' where letters are spoken individually,
+        convert it to 'send message hi to kavan'.
+
+        Extract the following from the user input:
+        - Contact name: The person to send the message to
+        - Message: The content of the message
+
+        Return ONLY a JSON object with keys 'contact' and 'message'. No additional text.
+
+        Example:
+        Input: "send message Hi to k a v a n"
+        Output: {"contact": "kavan", "message": "hi"}
+
+        Input: "send hello to john"
+        Output: {"contact": "john", "message": "hello"}
+        """
+
+        # Use chat service to process the input
+        response = self.chat_service.ask(f"{template_prompt}\n\nUser input: {user_input}")
+
+        try:
+            # Parse the JSON response
+            result = json.loads(response.strip())
+            contact = result.get('contact', '').strip()
+            message = result.get('message', '').strip()
+
+            if contact and message:
+                # Send the message
+                success = self.send_whatsapp_message(contact, message)
+                if success:
+                    return f"Message sent to {contact}: {message}"
+                else:
+                    return f"Failed to send message to {contact}"
+            else:
+                return "Could not extract contact name and message from your request."
+        except json.JSONDecodeError:
+            return "Failed to process your message request. Please try again."

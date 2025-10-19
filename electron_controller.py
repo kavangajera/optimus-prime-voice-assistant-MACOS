@@ -2,6 +2,7 @@ import subprocess
 import os
 import socket
 import threading
+import json
 
 class ElectronController:
     def __init__(self):
@@ -134,4 +135,17 @@ class ElectronController:
             return True
         except Exception as e:
             print(f"❌ Failed to pause animation: {e}")
+            return False
+    
+    def show_summary_popup(self, summary):
+        """Send a command to show a summary popup in the Electron app"""
+        try:
+            # Create a command that includes the summary text
+            # Limit the summary length to prevent issues with the socket
+            truncated_summary = summary[:2000]  # Increase the limit for more content
+            command = f"show_summary {truncated_summary}"
+            result = self._send_command(command)
+            return result
+        except Exception as e:
+            print(f"❌ Failed to show summary popup: {e}")
             return False

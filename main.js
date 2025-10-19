@@ -2,8 +2,10 @@
 const { app, BrowserWindow, screen, ipcMain } = require('electron');
 const net = require('net');
 const fs = require('fs');
+const path = require('path');
 
 let win;
+let summaryWindow = null; // New window for the summary
 let socketServer;
 const socketPath = '/tmp/optimus-electron-socket';
 
@@ -145,6 +147,10 @@ function handleCommand(command) {
       }
       app.quit();
       break;
+    case 'show_summary':
+      // Show summary in a separate window
+      showSummaryWindow(params.join(' '));
+      break;
   }
 }
 
@@ -172,6 +178,56 @@ function pauseAnimation() {
     `);
     console.log('⏸️ Pausing animation');
   }
+}
+
+function showSummaryWindow(summary) {
+  // Close existing summary window if it exists
+  if (summaryWindow && !summaryWindow.isDestroyed()) {
+    summaryWindow.close();
+  }
+  
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width, height } = primaryDisplay.workAreaSize;
+
+  const summaryWidth = 800;
+  const summaryHeight = 600;
+
+  // Position at top-left corner instead of center
+  const x = 20;  // 20 pixels from left edge
+  const y = 20;  // 20 pixels from top edge
+
+  // Create a new summary window (similar to table view in chat_box)
+  summaryWindow = new BrowserWindow({
+    width: summaryWidth,
+    height: summaryHeight,
+    x: x, 
+    y: y,
+    frame: false, // Make it frameless like the chat box
+    transparent: true, // Make it transparent like the chat box
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    focusable: true,
+    hasShadow: true,
+    resizable: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    }
+  });
+
+  summaryWindow.loadFile(path.resolve(__dirname, 'chat_box', 'summary_view.html'));
+  
+  // When the summary window is loaded, send the summary content to it
+  summaryWindow.webContents.on('did-finish-load', () => {
+    summaryWindow.webContents.send('set-summary', summary);
+  });
+  
+  console.log('📝 Showing summary window');
+  
+  // When the summary window is closed, set the reference to null
+  summaryWindow.on('closed', () => {
+    summaryWindow = null;
+  });
 }
 
 app.whenReady().then(createWindow);

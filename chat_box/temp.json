@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Mahatma Gandhi",
+    "role": "Leader of Indian National Congress",
+    "year_of_birth": "1869",
+    "year_of_death": "1948"
+  },
+  {
+    "name": "Subhas Chandra Bose",
+    "role": "President of Indian National Congress (two terms)",
+    "year_of_birth": "1897",
+    "year_of_death": "1945"
+  },
+  {
+    "name": "Lal Bahadur Shastri",
+    "role": "Second Prime Minister of India (1964-1966)",
+    "year_of_birth": "1904",
+    "year_of_death": "1966"
+  },
+  {
+    "name": "Bhagat Singh",
+    "role": "Leader of the Singh Sabha Movement and a prominent revolutionary in Punjab",
+    "year_of_birth": "1907",
+    "year_of_death": "1931"
+  },
+  {
+    "name": "Sarojini Naidu",
+    "role": "First Indian woman to become the President of the Indian National Congress (1925)",
+    "year_of_birth": "1879",
+    "year_of_death": "1949"
+  }
+]

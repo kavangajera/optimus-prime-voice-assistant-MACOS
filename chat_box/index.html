@@ -176,7 +176,7 @@
     <div class="panel" id="panel">
       <div class="header">
         <div class="header-icon">
-          <img src="/Users/kavan/Desktop/python-programming/langChain/image.png" alt="Optimus Prime">
+          <img src="/Users/kavan/Documents/GitHub/python-programming/langChain/image.png" alt="Optimus Prime">
         </div>
         <div class="header-title">Optimus Chat</div>
       </div>
@@ -373,7 +373,8 @@ response = service.ask('${userText.replace(/'/g, "\\'")}')
 print(response)
 `;
 
-        exec('source /Users/kavan/Desktop/python-programming/langChain/genaiENV/bin/activate && python3 -c "' + pythonScript + '"', {shell: '/bin/bash'}, (error, stdout, stderr) => {
+        exec('source /Users/kavan/Documents/GitHub/optimus-prime-voice-assistant-MACOS/optimusENV/bin/activate && python3 -c "' + pythonScript + '"', {shell: '/bin/bash'}, (error, stdout, stderr) => {
+
           if (error) {
             console.error('Python script error:', error);
             // Write error to history file

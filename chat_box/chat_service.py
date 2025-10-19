@@ -25,7 +25,7 @@ class MockLLM:
 
 
 # Absolute path for the chat history JSON file
-HISTORY_FILE_PATH = "/Users/kavan/Desktop/optimus-prime-voice-assistant-MACOS/test_files/chat_history.json"
+HISTORY_FILE_PATH = "/Users/kavan/Documents/GitHub/optimus-prime-voice-assistant-MACOS/chat_box/chat_history.json"
 
 
 class ChatService:
@@ -145,6 +145,31 @@ class ChatService:
         self.add_message('bot', response_text)
         
         return response_text
+    
+    def ask_for_summary(self, user_text: str) -> str:
+        user_text = (user_text or '').strip()
+        if not user_text:
+            return ''
+        try:
+            if LANGCHAIN_AVAILABLE:
+                # # Format history for the prompt
+                chat_history = self.get_formatted_history()
+                
+                # Create a specific prompt for summary responses
+                response = self.chain.invoke({
+                    "chat_history": chat_history,
+                    "input": f"{user_text}"
+                })
+                
+                response_text = response if isinstance(response, str) else str(response)
+            else:
+                # Use mock response when LangChain is not available
+                response_text = self.llm.invoke(user_text)
+        except Exception as e:
+            # Handle any error during LLM processing
+            response_text = f"Sorry, I encountered an error: {str(e)}"
+        return response_text
+        
 
     def _extract_json_from_response(self, response_text: str) -> str:
         """Extract JSON from response that might be wrapped in markdown or have extra text"""
@@ -168,7 +193,7 @@ class ChatService:
             try:
                 parsed = json.loads(extracted_json)
                 # Save the JSON to temp.json when we have a valid response
-                temp_path = "/Users/kavan/Desktop/optimus-prime-voice-assistant-MACOS/test_files/temp.json"
+                temp_path = "/Users/kavan/Documents/GitHub/optimus-prime-voice-assistant-MACOS/chat_box/temp.json"
                 with open(temp_path, 'w', encoding='utf-8') as f:
                     json.dump(parsed, f, ensure_ascii=False, indent=2)
                 return json.dumps(parsed)  # Return clean JSON string
