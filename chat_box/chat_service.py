@@ -4,6 +4,7 @@ import os
 import json
 import threading
 import time
+import re
 from datetime import datetime
 from typing import List, Dict, Any
 
@@ -17,10 +18,22 @@ except ImportError:
     LANGCHAIN_AVAILABLE = False
     print("Warning: LangChain modules not available. Using basic response.")
 
+# Import wiki extractor functions
+try:
+    import sys
+    import os
+    # Add the parent directory to sys.path to ensure import works from any location
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+    from information_extraction import wiki_extractor
+    WIKI_AVAILABLE = True
+except ImportError:
+    WIKI_AVAILABLE = False
+    print("Warning: Wiki extractor not available.")
+
 
 class MockLLM:
     """Mock LLM for when LangChain is not available."""
-    def invoke(self, input_text):
+    def invoke_dummy(self, input_text):
         return f"I received your message: '{input_text}'. This is a mock response since the actual model is not available."
 
 
@@ -99,23 +112,103 @@ class ChatService:
                 messages.append(AIMessage(content=entry['text']))
         return messages
 
+    def _is_specific_query(self, user_text: str) -> tuple[bool, str]:
+        """Use the NLP model to check if the query is about a specific event, person, or place, and extract the entity."""
+        print(f"Debug: LANGCHAIN_AVAILABLE = {LANGCHAIN_AVAILABLE}")
+        if not LANGCHAIN_AVAILABLE:
+            print("Debug: Using fallback heuristics")
+            # Fallback to simple heuristics if LangChain not available
+            lower_text = user_text.lower()
+            if any(lower_text.startswith(phrase) for phrase in ['who is', 'what is', 'where is', 'tell me about', 'who are', 'what are']):
+                if not any(word in lower_text for word in ['grammar', 'english', 'language', 'math', 'science']):
+                    entity = self._extract_entity(user_text)
+                    print(f"Debug: Heuristics detected specific query, entity: {entity}")
+                    return True, entity
+            print("Debug: Heuristics detected non-specific query")
+            return False, ""
+
+        try:
+            print("Debug: Invoking LLM for classification")
+            # Create a prompt for classification and extraction
+            classification_prompt = f"Analyze the user query. Is it asking about a specific event (like a tournament or historical event), person (like a celebrity or historical figure), or place (like a city or landmark)? If yes, extract the main entity name (e.g., 'ICC Champions Trophy 2025' from 'Who are champions of icc champions trophy 2025 ?'). Respond ONLY with JSON: {{\"is_specific\": true, \"what_specific\": \"entity name\"}} or {{\"is_specific\": false}}.\n\nQuery: {user_text}"
+            print(f"Debug: Prompt: {classification_prompt}")
+            response = self.llm.invoke(classification_prompt)
+            print(f"Debug: LLM response: {response}")
+            response_text = response if isinstance(response, str) else str(response)
+            # Extract JSON from response
+            json_str = self._extract_json_from_response(response_text)
+            print(f"Debug: Extracted JSON: {json_str}")
+            if json_str:
+                try:
+                    data = json.loads(json_str)
+                    is_specific = data.get('is_specific', False)
+                    what_specific = data.get('what_specific', '') if is_specific else ''
+                    print(f"Debug: Parsed is_specific: {is_specific}, what_specific: {what_specific}")
+                    return is_specific, what_specific
+                except json.JSONDecodeError:
+                    print("Debug: JSONDecodeError")
+                    pass
+            print("Debug: No valid JSON found")
+            return False, ""
+        except Exception as e:
+            print(f"Error in classification: {e}")
+            return False, ""
+
+    def _extract_entity(self, user_text: str) -> str:
+        """Extract the entity from the query, e.g., 'icc champions trophy 2025' from 'Who are champions of icc champions trophy 2025 ?'"""
+        # Remove question words and punctuation
+        entity = re.sub(r'^(who|what|where|tell me about)\s+', '', user_text.lower(), flags=re.IGNORECASE)
+        entity = re.sub(r'[^\w\s]', '', entity).strip()
+        return entity
+
     def ask(self, user_text: str) -> str:
         user_text = (user_text or '').strip()
         if not user_text:
             return ''
-        
+
         # Check if user requested tabular form
         is_tabular_request = any(phrase in user_text.lower() for phrase in ['table', 'tabular', 'form', 'give in table', 'view in table', 'show as table'])
-        
+
+        # Check if it's a specific query about event/person/place
+        is_specific, entity = self._is_specific_query(user_text)
+        print(f"Debug: is_specific={is_specific}, entity='{entity}'")
+
         # Note: User message is already added by JavaScript for immediate UI feedback
         # We only add the bot response here to avoid duplication
-        
+
         try:
             if LANGCHAIN_AVAILABLE:
                 # Format history for the prompt
                 chat_history = self.get_formatted_history()
-                
-                if is_tabular_request:
+                print("Wiki: "+str(WIKI_AVAILABLE))
+                if is_specific and WIKI_AVAILABLE:
+                    # Entity is already extracted by _is_specific_query
+                    if entity:
+                        # Search and parse
+                        url = wiki_extractor.search_wikipedia(entity)
+                        if url:
+                            data = wiki_extractor.parse_article(url)
+                            # Save JSON
+                            filename = re.sub(r'[^A-Za-z0-9]+', '_', entity)[:40] + '.json'
+                            wiki_extractor.save_json(data, filename)
+                            # Extract sections text
+                            sections_text = '\n\n'.join([sec['text'] for sec in data.get('sections', []) if sec['text']])
+                            # Create prompt with context
+                            context_prompt = f"Based on the following information from Wikipedia:\n{sections_text}\n\nUser question: {user_text}"
+                            # Use direct LLM invoke without chat history to ensure context is used
+                            response = self.llm.invoke(context_prompt)
+                        else:
+                            # Fallback if no URL found
+                            response = self.chain.invoke({
+                                "chat_history": chat_history,
+                                "input": user_text
+                            })
+                    else:
+                        response = self.chain.invoke({
+                            "chat_history": chat_history,
+                            "input": user_text
+                        })
+                elif is_tabular_request:
                     # Create a specific prompt for tabular responses
                     response = self.chain.invoke({
                         "chat_history": chat_history,
@@ -127,9 +220,9 @@ class ChatService:
                         "chat_history": chat_history,
                         "input": user_text
                     })
-                
+
                 response_text = response if isinstance(response, str) else str(response)
-                
+
                 # If it's a tabular request, try to extract and validate JSON
                 if is_tabular_request:
                     # Extract JSON from response if it's wrapped in code blocks or has extra text
@@ -140,10 +233,10 @@ class ChatService:
         except Exception as e:
             # Handle any error during LLM processing
             response_text = f"Sorry, I encountered an error: {str(e)}"
-        
+
         # Add bot response to history
         self.add_message('bot', response_text)
-        
+
         return response_text
     
     def ask_for_summary(self, user_text: str) -> str:

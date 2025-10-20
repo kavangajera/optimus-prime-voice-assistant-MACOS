@@ -9,7 +9,7 @@ import time
 import re
 import threading
 import time
-from app_launcher import open_app, close_app, play_music, monitor_music_playback, start_monitor_marks, stop_monitor_marks , search_safari, open_chatbox, close_chatbox, summarize_screen
+from app_launcher import open_app, close_app, play_music, monitor_music_playback, start_monitor_marks, stop_monitor_marks , search_safari, open_chatbox, close_chatbox, summarize_screen, start_bluetooth
 from functions.messenger import Messenger
 from speech_to_text import microphone_active
 from text_to_speech import get_tts_instance
@@ -143,6 +143,18 @@ class CommandProcessor:
                 response = "No active marks monitoring system is running."
                 self.tts_handler.speak_text_clean(response, self.electron_controller)
             return True  # Continue listening
+
+        # Check for start bluetooth command
+        if "start bluetooth" in command.lower():
+            response = "Starting Bluetooth and connecting to JBL Tune 520BT for you sir!"
+            print(f"🤖 {response}")
+            self.tts_handler.speak_text_clean(response, self.electron_controller)
+            success = start_bluetooth()
+            if not success:
+                error_response = "I encountered an error while starting Bluetooth and connecting to JBL Tune 520BT."
+                self.tts_handler.speak_text_clean(error_response, self.electron_controller)
+            return True  # Continue listening
+
         
         # Check for exit command
         

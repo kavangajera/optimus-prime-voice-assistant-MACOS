@@ -2,31 +2,41 @@
   {
     "role": "kg",
     "text": "Hi",
-    "timestamp": "2025-10-19T07:03:17.246Z"
+    "timestamp": "2025-10-20T08:09:14.259Z"
   },
   {
     "role": "bot",
-    "text": " Hello! How can I assist you today? If there's something specific on your mind, feel free to share it and I'll do my best to help.",
-    "timestamp": "2025-10-19T07:03:21.717843"
+    "text": " Hello! How can I assist you today? If you have any questions or need help with something, feel free to ask and I'll do my best to help you out.",
+    "timestamp": "2025-10-20T08:09:19.063118"
   },
   {
     "role": "kg",
-    "text": "Give me info of 5 freedom fighters of india in tabular form",
-    "timestamp": "2025-10-19T07:03:47.259Z"
+    "text": "When operation sindoor took place?",
+    "timestamp": "2025-10-20T08:09:41.843Z"
   },
   {
     "role": "bot",
-    "text": "[{\"name\": \"Mahatma Gandhi\", \"role\": \"Leader of Indian National Congress\", \"year_of_birth\": \"1869\", \"year_of_death\": \"1948\"}, {\"name\": \"Subhas Chandra Bose\", \"role\": \"President of Indian National Congress (two terms)\", \"year_of_birth\": \"1897\", \"year_of_death\": \"1945\"}, {\"name\": \"Lal Bahadur Shastri\", \"role\": \"Second Prime Minister of India (1964-1966)\", \"year_of_birth\": \"1904\", \"year_of_death\": \"1966\"}, {\"name\": \"Bhagat Singh\", \"role\": \"Leader of the Singh Sabha Movement and a prominent revolutionary in Punjab\", \"year_of_birth\": \"1907\", \"year_of_death\": \"1931\"}, {\"name\": \"Sarojini Naidu\", \"role\": \"First Indian woman to become the President of the Indian National Congress (1925)\", \"year_of_birth\": \"1879\", \"year_of_death\": \"1949\"}]",
-    "timestamp": "2025-10-19T07:04:11.970627"
+    "text": " Operation Sindoor took place on May 7, 2025.",
+    "timestamp": "2025-10-20T08:09:52.094102"
+  },
+  {
+    "role": "kg",
+    "text": "What places were attacked in Operation Sindoor ?",
+    "timestamp": "2025-10-20T08:10:23.131Z"
   },
   {
     "role": "bot",
-    "text": " {\"contact\": \"pawan\", \"message\": \"with high\"}",
-    "timestamp": "2025-10-19T07:21:10.019772"
+    "text": " Operation Sindoor was a military operation by India that targeted terrorism-related infrastructure facilities of Pakistan-based militant groups Jaish-e-Mohammed and Lashkar-e-Taiba in Pakistan and Pakistan-administered Azad Kashmir. Specific locations mentioned in the Wikipedia article include:\n\n1. Terrorism-related infrastructure facilities in Pakistan and Pakistan-administered Azad Kashmir (though no specific cities or towns were named).\n2. Jammu, particularly Poonch, in Indian-administered Jammu and Kashmir, was attacked by Pakistan's army during the conflict as a retaliation to India's Operation Sindoor.\n3. Pakistan allegedly launched missile attacks on Indian air bases, including the Sirsa air base, while India accused Pakistan of attacking several other Pakistani air bases during the same period. The specific air bases mentioned in the article are:\n   - Sirsa air base (India)\n   - Nur Khan air base (Pakistan)\n   - Rafiqi air base (Pakistan)\n   - Murid air base (Pakistan)\n4. India allegedly targeted several Indian military bases during its operation, including Udhampur air base, Pathankot air base, and Adampur air base (though these were later retaliated by Pakistan as part of Operation Bunyan-un-Marsoos).",
+    "timestamp": "2025-10-20T08:10:47.712667"
+  },
+  {
+    "role": "kg",
+    "text": "Who won the asia cup 2025 ?",
+    "timestamp": "2025-10-20T08:11:31.456Z"
   },
   {
     "role": "bot",
-    "text": " {\"contact\": \"kavan\", \"message\": \"hello\"}",
-    "timestamp": "2025-10-19T07:22:46.292240"
+    "text": " India won the Asia Cup 2025. They defeated Pakistan in the final by 5 wickets to retain their title and win their ninth overall title.",
+    "timestamp": "2025-10-20T08:11:40.741587"
   }
 ]

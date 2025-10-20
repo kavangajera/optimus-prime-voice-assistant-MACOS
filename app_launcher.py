@@ -6,6 +6,7 @@ from functions.marks_monitor import MarksMonitor
 from functions.safari_searcher import SafariSearcher
 from functions.screen_summarizer import capture_screen_and_summarize
 from functions.file_operations import perform_file_operation
+from functions.bluetooth_manager import BluetoothManager
 
 
 def main():
@@ -14,6 +15,7 @@ def main():
     messenger = Messenger()
     marks_monitor = MarksMonitor()
     safari_searcher = SafariSearcher()
+    bluetooth_manager = BluetoothManager()
 
     if len(sys.argv) > 1:
         # If app name is provided as command line argument
@@ -38,6 +40,8 @@ def main():
             marks_monitor.start_monitor_marks()
         elif app_name.lower() == "stop monitoring marks":
             marks_monitor.stop_monitor_marks()
+        elif app_name.lower() == "start bluetooth":
+            bluetooth_manager.connect_jbl()
         else:
             app_manager.open_app(app_name)
     else:
@@ -77,6 +81,8 @@ def main():
             marks_monitor.start_monitor_marks()
         elif user_input.lower() == "stop monitoring marks":
             marks_monitor.stop_monitor_marks()
+        elif user_input.lower() == "start bluetooth":
+            bluetooth_manager.connect_jbl()
         elif user_input.strip():
             app_manager.open_app(user_input)
         else:
@@ -121,6 +127,12 @@ def stop_monitor_marks():
     """Stop marks monitoring"""
     marks_monitor = MarksMonitor()
     return marks_monitor.stop_monitor_marks()
+
+def start_bluetooth():
+    """Start Bluetooth"""
+    bluetooth_manager = BluetoothManager()
+    return bluetooth_manager.connect_jbl()
+
 
 def open_chatbox():
     """Open the chatbox application"""
